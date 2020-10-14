@@ -6,6 +6,7 @@
 # *******************************************************************
 import colorsys
 import os
+os.environ['KERAS_BACKEND'] = 'tensorflow'
 from datetime import datetime
 
 import cv2
