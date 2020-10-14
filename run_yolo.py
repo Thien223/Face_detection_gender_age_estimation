@@ -1,12 +1,15 @@
 ### thien.locslab@gmail.com
-import cv2
-import glob
-import time
+import json
 import numpy as np
 import argparse
 import torch
 import cv2
-from modules.yolo import YOLO, detect_video, detect_img
+from modules.new_yolo import YOLO, detect_video, detect_img
+from flask import Flask, Response, request, render_template
+
+application = Flask(__name__)
+
+
 
 ### get pretrained model of age and gender detection
 def get_model():
@@ -27,8 +30,6 @@ def get_model():
     return m
 
 
-
-
 #####################################################################
 def get_args():
     parser = argparse.ArgumentParser()
@@ -40,13 +41,12 @@ def get_args():
                         help='path to class definitions')
     parser.add_argument('--score', type=float, default=0.5,
                         help='the score threshold')
-    parser.add_argument('--iou', type=float, default=0.45,
-                        help='the iou threshold')
+    parser.add_argument('--iou', type=float, default=0.45,help='the iou threshold')
     parser.add_argument('--img-size', type=list, action='store',
                         default=(416, 416), help='input image size')
     parser.add_argument('--image', default=False, action="store_true",
                         help='image detection mode')
-    parser.add_argument('--video', type=str, default='http://164.125.154.221:8090/?action=stream',
+    parser.add_argument('--video', type=str, default='http://119.198.38.200:8090/?action=stream',
                         help='path to the video')
     parser.add_argument('--output', type=str, default='1',
                         help='image/video output path')
@@ -72,7 +72,15 @@ def transform_to_bird_eye_view(source, original_object_points, target_object_poi
 
 
 
-if __name__ == "__main__":
+@application.route('/', methods=['GET','POST'])
+def index():
+    return render_template('index.html')
+
+@application.route('/stream', methods=['GET','POST'])
+def main():
+    # data=request.get_json()
+    # hash = data['key']
+    # if hash=='3MtRBPElFf5vLZeRbwymxldAISeFy_l39iQn9pGWPzQ=':
     age_gender_model = get_model()
     args = get_args()
     # target_view_img = cv2.imread('templates/Chessboard_standard_top_down_view.png')
@@ -81,12 +89,20 @@ if __name__ == "__main__":
     # source_view_img=cv2.resize(source_view_img,(640,480))
     # ret_2,source_corners_2 = cv2.findChessboardCorners(source_view_img, (9,6))
     # M, H = cv2.findHomography(source_corners_2, target_corners_1)
-    # #
+    #
     # # cv2.drawChessboardCorners(img_1, (4, 2), src, ret_1)
     # # cv2.imshow("image source",img_1)
     # #
     # # cv2.drawChessboardCorners(img_2, (4, 2), dst, ret_2)
     # # cv2.imshow("image source",img_2)
     # transform_to_bird_eye_view(args.video, original_object_points = corners_2, target_object_points=corners_1)
-    detect_img(YOLO(args), 'dataset/test_image', age_gender_model=age_gender_model)
-    # detect_video(YOLO(args),args.video,args.output,age_gender_model)
+    # gender, age = detect_img(YOLO(args), 'dataset/test_image', age_gender_model=age_gender_model)
+    # return gender, age
+    # return detect_video(YOLO(args),args.video,args.output,age_gender_model)
+    return Response(detect_video(YOLO(args),args.video,age_gender_model), mimetype='text/event-stream')
+    # else:
+    #     return Response(response=None, status=403)
+if __name__ == '__main__':
+    age_gender_model = get_model()
+    args = get_args()
+    detect_video(YOLO(args),args.video,age_gender_model)

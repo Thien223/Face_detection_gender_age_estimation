@@ -380,7 +380,6 @@ def image_loader_(face_img):
 
 
 def detect_video(model, video_path=None, output=None, age_gender_model=None, original_object_points = None, target_object_points=None, transformer=None):
-
     ### do not change
     camera_focal_length = 2.2 ### do not change
     width_height_ratio = 640/480 ### do not change
@@ -508,7 +507,7 @@ def detect_video(model, video_path=None, output=None, age_gender_model=None, ori
     cv2.destroyAllWindows()
     # close the session
     model.close_session()
-
+    return gender, age
 
 ## backup
 # # *******************************************************************
