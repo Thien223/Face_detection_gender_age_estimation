@@ -1,11 +1,12 @@
 ### thien.locslab@gmail.com
-import json
-import numpy as np
 import argparse
-import torch
+
 import cv2
-from modules.new_yolo import YOLO, detect_video, detect_img
-from flask import Flask, Response, request, render_template
+import numpy as np
+import torch
+from flask import Flask, Response, render_template
+
+from modules.new_yolo import YOLO, detect_video
 
 application = Flask(__name__)
 

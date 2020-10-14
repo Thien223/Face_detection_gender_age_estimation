@@ -4,18 +4,19 @@
 # with the reference of  : sthanhng@gmail.com
 # on Github : https://github.com/sthanhng
 # *******************************************************************
-import os, datetime
 import colorsys
+import datetime
+import os
 
-import numpy as np
 import cv2
+import numpy as np
 import torch
-from utils.trac_object import CentroidTracker
-from modules.model import eval
-from utils.face_generator import img_transform
+from PIL import ImageDraw, Image
 from keras import backend as K
 from keras.models import load_model
-from PIL import ImageDraw, Image
+
+from modules.model import eval
+from utils.trac_object import CentroidTracker
 
 sex_choice = {1: 'male', 2: 'female'}
 age_choice = {1: '<26', 2: '27~37', 3: '37~48', 4: '49~59', 5: '>60'}
