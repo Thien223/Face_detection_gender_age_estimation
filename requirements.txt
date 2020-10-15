@@ -1,0 +1,6 @@
+Keras==2.3.1
+opencv-python==4.4.0.44
+Pillow==7.2.0
+tensorflow-gpu==1.15.2
+torch==1.4.0+cu100
+torch-vision==0.5.0+cu100
