@@ -4,12 +4,7 @@ import argparse
 import cv2
 import numpy as np
 import torch
-from flask import Flask, Response, render_template
-
 from modules.new_yolo import YOLO, detect_video
-
-application = Flask(__name__)
-
 
 
 ### get pretrained model of age and gender detection
@@ -71,38 +66,6 @@ def transform_to_bird_eye_view(source, original_object_points, target_object_poi
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-
-
-@application.route('/', methods=['GET','POST'])
-def index():
-    return render_template('index.html')
-
-@application.route('/stream', methods=['GET','POST'])
-def main():
-    # data=request.get_json()
-    # hash = data['key']
-    # if hash=='3MtRBPElFf5vLZeRbwymxldAISeFy_l39iQn9pGWPzQ=':
-    age_gender_model = get_model()
-    args = get_args()
-    # target_view_img = cv2.imread('templates/Chessboard_standard_top_down_view.png')
-    # ret_1,target_corners_1 = cv2.findChessboardCorners(target_view_img, (9,6))
-    # source_view_img = cv2.imread('templates/IMG_1747.JPG')
-    # source_view_img=cv2.resize(source_view_img,(640,480))
-    # ret_2,source_corners_2 = cv2.findChessboardCorners(source_view_img, (9,6))
-    # M, H = cv2.findHomography(source_corners_2, target_corners_1)
-    #
-    # # cv2.drawChessboardCorners(img_1, (4, 2), src, ret_1)
-    # # cv2.imshow("image source",img_1)
-    # #
-    # # cv2.drawChessboardCorners(img_2, (4, 2), dst, ret_2)
-    # # cv2.imshow("image source",img_2)
-    # transform_to_bird_eye_view(args.video, original_object_points = corners_2, target_object_points=corners_1)
-    # gender, age = detect_img(YOLO(args), 'dataset/test_image', age_gender_model=age_gender_model)
-    # return gender, age
-    # return detect_video(YOLO(args),args.video,args.output,age_gender_model)
-    return Response(detect_video(YOLO(args),args.video,age_gender_model), mimetype='text/event-stream')
-    # else:
-    #     return Response(response=None, status=403)
 if __name__ == '__main__':
     age_gender_model = get_model()
     args = get_args()
