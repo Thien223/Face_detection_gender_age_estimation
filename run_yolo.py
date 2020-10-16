@@ -9,7 +9,8 @@ from modules.new_yolo import YOLO, detect_video
 
 ### get pretrained model of age and gender detection
 def get_model():
-    model_path = 'models/vgg19-epochs_100-step_68400-gender_accuracy_0.9896511380062547.pth'
+    # model_path = 'models/vgg19-epochs_100-step_68400-gender_accuracy_0.9896511380062547.pth'
+    model_path = 'models/vgg19-epochs_97-step_0-gender_accuracy_0.979676459052346.pth'
     checkpoint = torch.load(model_path, map_location='cpu')
     model_type = checkpoint['model_type']
     model_parameter = checkpoint['model_parameter']

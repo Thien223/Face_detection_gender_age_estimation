@@ -435,9 +435,6 @@ def detect_video(model, video_path=None, age_gender_model=None):
 			except Exception as e:
 				continue
 		objects = tracker.update(tracking_faces)
-		# datetime object containing current date and time
-		now = datetime.now()
-		dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
 		print(f'Saved object ids: {saved_object_ids}')
 		for (object_id, centroid) in objects.items():
 			current_object_ids.append(object_id)
@@ -470,8 +467,7 @@ def detect_video(model, video_path=None, age_gender_model=None):
 		# print(f'current_object_ids: {current_object_ids}')
 		for obj in face_objs:
 			if obj.id not in current_object_ids: ### face disappeared
-				print(f'obj.id {obj.id} disapeared')
-				gender = 'Male' if obj.gender.count('Male') >= obj.gender.count('Female') else 'Female'
+				gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
 				age = max(set(obj.age), key = obj.age.count)
 				try:
 					going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
