@@ -469,15 +469,18 @@ def detect_video(model, video_path=None, age_gender_model=None):
 		# print(f'len(face_objs): {len(face_objs)}')
 		# print(f'current_object_ids: {current_object_ids}')
 		for obj in face_objs:
-			if obj.id not in current_object_ids: ### face disappeared
-				print(f'obj.id {obj.id} disapeared')
-				gender = 'Male' if obj.gender.count('Male') >= obj.gender.count('Female') else 'Female'
-				age = max(set(obj.age), key = obj.age.count)
-				going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
-				### remove disappeared object from face_objs and saved face_id
-				face_objs.remove(obj)
-				saved_object_ids.remove(obj.id)
-				send(obj.id, gender, age, going_in)
+			try:
+				if obj.id not in current_object_ids: ### face disappeared
+						print(f'obj.id {obj.id} disapeared')
+						gender = 'Male' if obj.gender.count('Male') >= obj.gender.count('Female') else 'Female'
+						age = max(set(obj.age), key = obj.age.count)
+						going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
+						### remove disappeared object from face_objs and saved face_id
+						face_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						send(obj.id, gender, age, going_in)
+			except Exception as e:
+				continue
 		# cv2.imshow("Map View", frames)
 		#### define interupt event
 		if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -496,9 +499,10 @@ def send(id, gender, age, going_in):
 	headers = {
 		'Content-Type': 'application/json',
 	}
-	str_ = 'mutation{createDetection(identifier:%d, age:"%s", gender:"%s", inAndOut:%s){identifier age gender inAndOut}}' % (id, age, gender, str(going_in).lower)
+	str_ = 'mutation{createDetection(identifier:%d, age:\"%s\", gender:\"%s\", inAndOut:%s){identifier age gender inAndOut}}' % (id, age, gender, str(going_in).lower())
 	data = dict(
 		query=str_,
 		variables={}
 	)
+	print(data)
 	requests.post(URL, data=json.dumps(data), headers=headers)
