@@ -4,7 +4,7 @@ import argparse
 import cv2
 import numpy as np
 import torch
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, stream_with_context
 
 from modules.new_yolo import YOLO, detect_video
 
@@ -87,27 +87,29 @@ def detect_camera():
 	detect_video(YOLO(args), args.video , age_gender_model)
 
 @app.route('/video', methods = ['GET', 'POST'])
-def detect_uploaded_video():
+def video():
+	headers = dict()
+	headers['Access-Control-Allow-Origin'] = '*'
 	age_gender_model = get_model()
 	args = get_args()
 	import os
-	if request.method=='POST':
-		file = request.files['file']
-		if (file.filename.endswith('.mp4') or file.filename.endswith('.avi')):
-			### run code here
+	file = request.files['file']
+	if (file.filename.endswith('.mp4') or file.filename.endswith('.avi')):
+		### run code here
+		file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+		file.save(file_path)
 
-			file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-			file.save(file_path)
-			detect_video(YOLO(args), file_path , age_gender_model)
-			return 'file uploaded successfully'
-		else:
-			return 'filename is not acceptable'
+
+		return app.response_class(stream_with_context(detect_video(YOLO(args), file_path , age_gender_model)),headers=headers, mimetype='text/event-stream')
+	else:
+
+		return app.response_class('', mimetype='text/event-stream')
+
 
 if __name__ == "__main__":
 
 
-	print(("Starting server..."
-		"please wait until server has fully started"))
+	print(("Starting server..."))
 	app.run(host='0.0.0.0', port=80,threaded=True)
 
 	# detect_video(YOLO(args),args.video,age_gender_model)

@@ -413,6 +413,7 @@ def detect_video(model, video_path=None, age_gender_model=None):
 		out_stream_writer = cv2.VideoWriter(f'outputs/{out_video_filename}.avi', video_fourcc, video_fps, (int(vid.get(3)), int(vid.get(4))))
 	try:
 		while ret:
+			print(ret)
 			current_object_ids = []
 			ret, frames = vid.read()
 			try:
@@ -488,6 +489,8 @@ def detect_video(model, video_path=None, age_gender_model=None):
 						print(f'gender: {gender}')
 						print(f'age: {age}')
 						print(f'going_in: {going_in}')
+						# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+						yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
 						# send(obj.id, gender, age, going_in)
 					except AttributeError as e:
 						face_objs.remove(obj)
