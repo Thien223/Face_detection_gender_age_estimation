@@ -402,7 +402,18 @@ def detect_video(model, video_path=None, age_gender_model=None):
 	tracker = CentroidTracker()
 	saved_object_ids = []
 	face_objs=[]
-	while True:
+	save_output=True
+	ret=True
+	out_stream_writer=None
+	out_video_filename = video_path.split('/')[-1]
+	if save_output:
+		video_fourcc = cv2.VideoWriter_fourcc(*'XVID')
+		video_fps = vid.get(cv2.CAP_PROP_FPS)
+		# the size of the frames to write
+		video_size = (int(640), int(480))
+		out_stream_writer = cv2.VideoWriter(f'outputs/{out_video_filename}', video_fourcc, video_fps, video_size)
+
+	while ret:
 		current_object_ids = []
 		ret, frames = vid.read()
 		try:
@@ -459,10 +470,10 @@ def detect_video(model, video_path=None, age_gender_model=None):
 					### update
 					face_objs[saved_object_ids.index(object_id)] = old_face
 			#### draw rectangle bounding box for each face
-			# text = "ID {}, gender {}, age {}".format(object_id, gender, age)
-			# cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
-			# 			cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-			# cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+			text = "ID {}, gender {}, age {}".format(object_id, gender, age)
+			cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
+						cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+			cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 		# print(f'len(face_objs): {len(face_objs)}')
 		# print(f'current_object_ids: {current_object_ids}')
 		for obj in face_objs:
@@ -474,17 +485,28 @@ def detect_video(model, video_path=None, age_gender_model=None):
 					### remove disappeared object from face_objs and saved face_id
 					face_objs.remove(obj)
 					saved_object_ids.remove(obj.id)
-					send(obj.id, gender, age, going_in)
-				except Exception as e:
+					print(f'id: {obj.id}')
+					print(f'gender: {gender}')
+					print(f'age: {age}')
+					print(f'going_in: {going_in}')
+					# send(obj.id, gender, age, going_in)
+				except AttributeError as e:
 					face_objs.remove(obj)
 					saved_object_ids.remove(obj.id)
 					continue
 
 		# cv2.imshow("Map View", frames)
+
+		### save video if needed
+		if save_output:
+			out_stream_writer.write(frames)
+
 		#### define interupt event
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
+
 	vid.release()
+	out_stream_writer.release()
 	cv2.destroyAllWindows()
 	# close the session
 	model.close_session()
