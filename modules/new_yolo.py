@@ -405,111 +405,112 @@ def detect_video(model, video_path=None, age_gender_model=None):
 	save_output=True
 	ret=True
 	out_stream_writer=None
-	out_video_filename = video_path.split('/')[-1]
+	out_video_filename = video_path.split('/')[-1].split('.')[0]
 	if save_output:
-		video_fourcc = cv2.VideoWriter_fourcc(*'XVID')
+		video_fourcc = cv2.VideoWriter_fourcc(*'MJPG')
 		video_fps = vid.get(cv2.CAP_PROP_FPS)
 		# the size of the frames to write
-		video_size = (int(640), int(480))
-		out_stream_writer = cv2.VideoWriter(f'outputs/{out_video_filename}', video_fourcc, video_fps, video_size)
-
-	while ret:
-		current_object_ids = []
-		ret, frames = vid.read()
-		try:
-			image = Image.fromarray(frames)
-		except AttributeError as e:
-			print(f' new_yolo.py line 414: {e}')
-			continue
-		image, faces = model.detect_image(image)
-		gender = 'unknown'
-		age = 'unknown'
-		tracking_faces = []
-
-		for i, (x1, y1, x2, y2) in enumerate(faces): ## with yolo, result will be 2 point of rectangle corner (x1, y1) and (x2, y2)
-			### each time detected a face, insert a new color
-			(x1, y1, x2, y2)=(int(x1), int(y1), int(x2), int(y2))
-			tracking_faces.append([y1, x1, y2, x2])
-			### extract the face
-			face_img = frames[x1: x2, y1:y2].copy()
-			cv2.rectangle(frames, (y1, x1), (y2, x2), (255, 0, 0), 2)
-			# Predict Gender and Age
+		out_stream_writer = cv2.VideoWriter(f'outputs/{out_video_filename}.avi', video_fourcc, video_fps, (int(vid.get(3)), int(vid.get(4))))
+	try:
+		while ret:
+			current_object_ids = []
+			ret, frames = vid.read()
 			try:
-				#### preparing face vector before passing to age, gender estimating model
-				vectors = image_loader_(face_img)
-				age_gender_output = age_gender_model(vectors)
-				## convert predicted index to meaningful label
-				sex_indicate = [i + 1 for i in age_gender_output['sex'].argmax(dim=-1).tolist()]
-				age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-				gender = sex_choice.get(sex_indicate[0])
-				age = age_choice.get(age_indicate[0])
-			except Exception as e:
+				image = Image.fromarray(frames)
+			except AttributeError as e:
+				print(f' new_yolo.py line 414: {e}')
 				continue
-		objects = tracker.update(tracking_faces)
-		print(f'Saved object ids: {saved_object_ids}')
-		for (object_id, centroid) in objects.items():
-			current_object_ids.append(object_id)
-			if object_id not in saved_object_ids:
-				if (gender!='unknown' and age!='unknown'):
-					print(f'there are new object: {object_id}')
-					## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
-					new_face = Face(id=object_id,gender=[gender],age=[age],first_centroid=centroid)
-					face_objs.append(new_face)
-					saved_object_ids.append(object_id)
+			image, faces = model.detect_image(image)
+			gender = 'unknown'
+			age = 'unknown'
+			tracking_faces = []
 
-			else:
-				if (gender != 'unknown' and age != 'unknown'):
-					# print(f'object_id {object_id}')
-					# print(f'saved_object_ids {saved_object_ids}')
-					### when the face object is already in the managing face_objects, update it's info
-					### get and edit
-					old_face = face_objs[saved_object_ids.index(object_id)]
-					old_face.gender = old_face.gender + [gender]
-					old_face.age = old_face.age + [age]
-					old_face.last_centroid=centroid
-					### update
-					face_objs[saved_object_ids.index(object_id)] = old_face
-			#### draw rectangle bounding box for each face
-			text = "ID {}, gender {}, age {}".format(object_id, gender, age)
-			cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
-						cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-			cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
-		# print(f'len(face_objs): {len(face_objs)}')
-		# print(f'current_object_ids: {current_object_ids}')
-		for obj in face_objs:
-			if obj.id not in current_object_ids: ### face disappeared
-				gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
-				age = max(set(obj.age), key = obj.age.count)
+			for i, (x1, y1, x2, y2) in enumerate(faces): ## with yolo, result will be 2 point of rectangle corner (x1, y1) and (x2, y2)
+				### each time detected a face, insert a new color
+				(x1, y1, x2, y2)=(int(x1), int(y1), int(x2), int(y2))
+				tracking_faces.append([y1, x1, y2, x2])
+				### extract the face
+				face_img = frames[x1: x2, y1:y2].copy()
+				cv2.rectangle(frames, (y1, x1), (y2, x2), (255, 0, 0), 2)
+				# Predict Gender and Age
 				try:
-					going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
-					### remove disappeared object from face_objs and saved face_id
-					face_objs.remove(obj)
-					saved_object_ids.remove(obj.id)
-					print(f'id: {obj.id}')
-					print(f'gender: {gender}')
-					print(f'age: {age}')
-					print(f'going_in: {going_in}')
-					# send(obj.id, gender, age, going_in)
-				except AttributeError as e:
-					face_objs.remove(obj)
-					saved_object_ids.remove(obj.id)
+					#### preparing face vector before passing to age, gender estimating model
+					vectors = image_loader_(face_img)
+					age_gender_output = age_gender_model(vectors)
+					## convert predicted index to meaningful label
+					sex_indicate = [i + 1 for i in age_gender_output['sex'].argmax(dim=-1).tolist()]
+					age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
+					gender = sex_choice.get(sex_indicate[0])
+					age = age_choice.get(age_indicate[0])
+				except Exception as e:
 					continue
+			objects = tracker.update(tracking_faces)
+			print(f'Saved object ids: {saved_object_ids}')
+			for (object_id, centroid) in objects.items():
+				current_object_ids.append(object_id)
+				if object_id not in saved_object_ids:
+					if (gender!='unknown' and age!='unknown'):
+						print(f'there are new object: {object_id}')
+						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
+						new_face = Face(id=object_id,gender=[gender],age=[age],first_centroid=centroid)
+						face_objs.append(new_face)
+						saved_object_ids.append(object_id)
 
-		# cv2.imshow("Map View", frames)
+				else:
+					if (gender != 'unknown' and age != 'unknown'):
+						# print(f'object_id {object_id}')
+						# print(f'saved_object_ids {saved_object_ids}')
+						### when the face object is already in the managing face_objects, update it's info
+						### get and edit
+						old_face = face_objs[saved_object_ids.index(object_id)]
+						old_face.gender = old_face.gender + [gender]
+						old_face.age = old_face.age + [age]
+						old_face.last_centroid=centroid
+						### update
+						face_objs[saved_object_ids.index(object_id)] = old_face
+				#### draw rectangle bounding box for each face
+				text = "ID {}, gender {}, age {}".format(object_id, gender, age)
+				cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
+							cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+				cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+			# print(f'len(face_objs): {len(face_objs)}')
+			# print(f'current_object_ids: {current_object_ids}')
+			for obj in face_objs:
+				if obj.id not in current_object_ids: ### face disappeared
+					gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
+					age = max(set(obj.age), key = obj.age.count)
+					try:
+						going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
+						### remove disappeared object from face_objs and saved face_id
+						face_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						print(f'id: {obj.id}')
+						print(f'gender: {gender}')
+						print(f'age: {age}')
+						print(f'going_in: {going_in}')
+						# send(obj.id, gender, age, going_in)
+					except AttributeError as e:
+						face_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						continue
 
-		### save video if needed
-		if save_output:
-			out_stream_writer.write(frames)
+			# cv2.imshow("Map View", frames)
 
-		#### define interupt event
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
+			### save video if needed
+			if save_output:
+				out_stream_writer.write(frames)
 
-	vid.release()
-	out_stream_writer.release()
-	cv2.destroyAllWindows()
-	# close the session
-	model.close_session()
+			#### define interupt event
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
+	except KeyboardInterrupt:
+		print('keyboard interupted..!')
+	finally:
+		vid.release()
+		out_stream_writer.release()
+		cv2.destroyAllWindows()
+		# close the session
+		model.close_session()
 
 
 
