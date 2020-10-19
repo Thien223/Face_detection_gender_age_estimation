@@ -10,7 +10,5 @@ dataset/
 backup/
 models/
 runs/
-templates/
-dataset/
 logs/
 outdir/
