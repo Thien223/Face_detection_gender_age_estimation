@@ -4,13 +4,13 @@ import argparse
 import cv2
 import numpy as np
 import torch
-from flask import Flask, render_template, request, stream_with_context
+# from flask import Flask, render_template, request, stream_with_context
 
 from modules.new_yolo import YOLO, detect_video
-
-UPLOAD_FOLDER = 'static/data/'
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+#
+# UPLOAD_FOLDER = 'static/data/'
+# app = Flask(__name__)
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 ### get pretrained model of age and gender detection
 def get_model():
@@ -74,42 +74,43 @@ def transform_to_bird_eye_view(source, original_object_points, target_object_poi
 
 
 
-
-@app.route('/')
-def index():
-	return render_template('index.html')
-
-
-@app.route('/stream', methods = ['GET', 'POST'])
-def detect_camera():
-	age_gender_model = get_model()
-	args = get_args()
-	detect_video(YOLO(args), args.video , age_gender_model)
-
-@app.route('/video', methods = ['GET', 'POST'])
-def video():
-	headers = dict()
-	headers['Access-Control-Allow-Origin'] = '*'
-	age_gender_model = get_model()
-	args = get_args()
-	import os
-	file = request.files['file']
-	if (file.filename.endswith('.mp4') or file.filename.endswith('.avi')):
-		### run code here
-		file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-		file.save(file_path)
-
-
-		return app.response_class(stream_with_context(detect_video(YOLO(args), file_path , age_gender_model)),headers=headers, mimetype='text/event-stream')
-	else:
-
-		return app.response_class('', mimetype='text/event-stream')
+#
+# @app.route('/')
+# def index():
+# 	return render_template('index.html')
+#
+#
+# @app.route('/stream', methods = ['GET', 'POST'])
+# def detect_camera():
+# 	age_gender_model = get_model()
+# 	args = get_args()
+# 	detect_video(YOLO(args), args.video , age_gender_model)
+#
+# @app.route('/video', methods = ['GET', 'POST'])
+# def video():
+# 	headers = dict()
+# 	headers['Access-Control-Allow-Origin'] = '*'
+# 	age_gender_model = get_model()
+# 	args = get_args()
+# 	import os
+# 	file = request.files['file']
+# 	if (file.filename.endswith('.mp4') or file.filename.endswith('.avi')):
+# 		### run code here
+# 		file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+# 		file.save(file_path)
+#
+#
+# 		return app.response_class(stream_with_context(detect_video(YOLO(args), file_path , age_gender_model)),headers=headers, mimetype='text/event-stream')
+# 	else:
+#
+# 		return app.response_class('', mimetype='text/event-stream')
 
 
 if __name__ == "__main__":
 
-
-	print(("Starting server..."))
-	app.run(host='0.0.0.0', port=80,threaded=True)
-
-	# detect_video(YOLO(args),args.video,age_gender_model)
+	#
+	# print(("Starting server..."))
+	# app.run(host='0.0.0.0', port=80,threaded=True)
+	age_gender_model = get_model()
+	args = get_args()
+	detect_video(YOLO(args),args.video,age_gender_model)

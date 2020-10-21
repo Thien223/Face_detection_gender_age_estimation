@@ -402,7 +402,7 @@ def detect_video(model, video_path=None, age_gender_model=None):
 	tracker = CentroidTracker()
 	saved_object_ids = []
 	face_objs=[]
-	save_output=True
+	save_output=False
 	ret=True
 	out_stream_writer=None
 	out_video_filename = video_path.split('/')[-1].split('.')[0]
@@ -413,7 +413,6 @@ def detect_video(model, video_path=None, age_gender_model=None):
 		out_stream_writer = cv2.VideoWriter(f'outputs/{out_video_filename}.avi', video_fourcc, video_fps, (int(vid.get(3)), int(vid.get(4))))
 	try:
 		while ret:
-			print(ret)
 			current_object_ids = []
 			ret, frames = vid.read()
 			try:
@@ -446,7 +445,6 @@ def detect_video(model, video_path=None, age_gender_model=None):
 				except Exception as e:
 					continue
 			objects = tracker.update(tracking_faces)
-			print(f'Saved object ids: {saved_object_ids}')
 			for (object_id, centroid) in objects.items():
 				current_object_ids.append(object_id)
 				if object_id not in saved_object_ids:
@@ -470,10 +468,10 @@ def detect_video(model, video_path=None, age_gender_model=None):
 						### update
 						face_objs[saved_object_ids.index(object_id)] = old_face
 				#### draw rectangle bounding box for each face
-				text = "ID {}, gender {}, age {}".format(object_id, gender, age)
-				cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
-							cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-				cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+				# text = "ID {}, gender {}, age {}".format(object_id, gender, age)
+				# cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
+				# 			cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 2)
+				# cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 			# print(f'len(face_objs): {len(face_objs)}')
 			# print(f'current_object_ids: {current_object_ids}')
 			for obj in face_objs:
@@ -485,14 +483,14 @@ def detect_video(model, video_path=None, age_gender_model=None):
 						### remove disappeared object from face_objs and saved face_id
 						face_objs.remove(obj)
 						saved_object_ids.remove(obj.id)
-						print(f'id: {obj.id}')
-						print(f'gender: {gender}')
-						print(f'age: {age}')
-						print(f'going_in: {going_in}')
+						# print(f'id: {obj.id}')
+						# print(f'gender: {gender}')
+						# print(f'age: {age}')
+						# print(f'going_in: {going_in}')
 						# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
-						yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-						# send(obj.id, gender, age, going_in)
-					except AttributeError as e:
+						# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+						send(obj.id, gender, age, going_in)
+					except Exception as e:
 						face_objs.remove(obj)
 						saved_object_ids.remove(obj.id)
 						continue
@@ -529,5 +527,5 @@ def send(id, gender, age, going_in):
 		query=str_,
 		variables={}
 	)
-	print(data)
+	# print(data)
 	requests.post(URL, data=json.dumps(data), headers=headers)
