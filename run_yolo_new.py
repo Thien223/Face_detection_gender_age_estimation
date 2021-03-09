@@ -48,7 +48,7 @@ def get_args():
 						default=(416, 416), help='input image size')
 	parser.add_argument('--image', default=False, action="store_true",
 						help='image detection mode')
-	parser.add_argument('--video', type=str, default='http://119.198.38.200:8090/?action=stream',
+	parser.add_argument('--video', type=str, default='http://175.200.252.169:8090/?action=stream',
 						help='path to the video')
 	parser.add_argument('--output', type=str, default='1',
 						help='image/video output path')

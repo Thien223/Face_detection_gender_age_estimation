@@ -1,4 +1,4 @@
-# *******************************************************************
+^G# *******************************************************************
 #
 # Author : thien@locslab.com 2020
 # with the reference of  : sthanhng@gmail.com
@@ -33,10 +33,9 @@ class YOLO(object):
 		self.class_names = self._get_class()
 		self.anchors = self._get_anchors()
 		self.sess = K.get_session()
-		print(f'args {args}')
 		self.boxes, self.scores, self.classes = self._generate()
 		self.model_image_size = args.img_size
-		
+
 	def _get_class(self):
 		classes_path = os.path.expanduser(self.classes_path)
 		with open(classes_path) as f:
@@ -53,9 +52,9 @@ class YOLO(object):
 
 	def _generate(self):
 		model_path = os.path.expanduser(self.model_path)
-		assert model_path.endswith('.h5'), 'Keras model or weights must be a .h5 file'
-		print(f'model_path: {self.model_path}')
-		assert os.path.isfile(self.model_path)
+		assert model_path.endswith(
+			'.h5'), 'Keras model or weights must be a .h5 file'
+
 		# load model, or construct model and load weights
 		num_anchors = len(self.anchors)
 		num_classes = len(self.class_names)
@@ -403,7 +402,7 @@ def detect_video(model, video_path=None, age_gender_model=None):
 	tracker = CentroidTracker()
 	saved_object_ids = []
 	face_objs=[]
-	save_output=True
+	save_output=False
 	ret=True
 	out_stream_writer=None
 	out_video_filename = video_path.split('/')[-1].split('.')[0]
@@ -471,9 +470,10 @@ def detect_video(model, video_path=None, age_gender_model=None):
 						### update
 						face_objs[saved_object_ids.index(object_id)] = old_face
 				#### draw rectangle bounding box for each face
-				text = "ID {}, gender {}, age {}".format(object_id, gender, age)
-				cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
-				cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
+				# text = "ID {}, gender {}, age {}".format(object_id, gender, age)
+				# cv2.putText(frames, text, (centroid[0] - 10, centroid[1] - 10),
+				# 			cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 2)
+				# cv2.circle(frames, (centroid[0], centroid[1]), 4, (0, 255, 0), -1)
 			# print(f'len(face_objs): {len(face_objs)}')
 			# print(f'current_object_ids: {current_object_ids}')
 			for obj in face_objs:
@@ -510,8 +510,7 @@ def detect_video(model, video_path=None, age_gender_model=None):
 		print('keyboard interupted..!')
 	finally:
 		vid.release()
-		if save_output:
-			out_stream_writer.release()
+		out_stream_writer.release()
 		cv2.destroyAllWindows()
 		# close the session
 		model.close_session()
@@ -521,7 +520,7 @@ def detect_video(model, video_path=None, age_gender_model=None):
 def send(id, gender, age, going_in):
 	import requests
 	import json
-	URL = 'http://museum.locslab.com/api'
+	URL = 'http://211.236.48.214:8000'
 	headers = {
 		'Content-Type': 'application/json',
 	}
