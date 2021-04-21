@@ -8,7 +8,10 @@ dataset/
 */__pycache__/
 .ipynb_checkpoints/
 backup/
-models/
+*/checkpoints/
 runs/
 logs/
 outdir/
+outputs/
+testing_images/
+val_images/

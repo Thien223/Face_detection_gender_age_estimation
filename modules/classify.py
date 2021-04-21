@@ -10,32 +10,36 @@ class SexClassify_(nn.Module):
             nn.Linear(input_size, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(1000, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(1000, 2),
+            nn.Sigmoid()
         )
 
     def forward(self, inputs):
+        # print(f'inputs.shape {inputs.shape}')
+        # print(f'classify model {self.classify}')
         x = self.classify(inputs)
         return x
 
 
 class AgeClassify_(nn.Module):
-    def __init__(self, input_size):
+    def __init__(self, input_size, age_classes):
         super().__init__()
         self.classify = nn.Sequential(
             nn.Linear(input_size, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(1000, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
-            nn.Linear(1000, 5),
+            nn.Dropout(p=0.3),
+            nn.Linear(1000, age_classes),
+            # nn.Softmax(dim=1)
         )
 
     def forward(self, inputs):
@@ -52,11 +56,11 @@ class SexClassify(nn.Module):
             nn.Linear(input_size, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(1000, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(1000, 2)
         )
 
@@ -66,18 +70,18 @@ class SexClassify(nn.Module):
 
 
 class AgeClassify(nn.Module):
-    def __init__(self, input_size):
+    def __init__(self, input_size, age_classes):
         super().__init__()
         self.classify = nn.Sequential(
             nn.Linear(input_size, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.3),
             nn.Linear(1000, 1000),
             nn.BatchNorm1d(1000),
             nn.ReLU(inplace=True),
-            nn.Dropout(p=0.5),
-            nn.Linear(1000, 5)
+            nn.Dropout(p=0.3),
+            nn.Linear(1000, age_classes)
         )
 
     def forward(self, inputs):
@@ -86,24 +90,24 @@ class AgeClassify(nn.Module):
 
 
 class Classify_(nn.Module):
-    def __init__(self, input_size=2048):
+    def __init__(self, input_size=2048, age_classes=10):
         super().__init__()
-        self.sex_classify = SexClassify_(input_size)
-        self.age_classify = AgeClassify_(input_size)
+        self.gender_classify = SexClassify_(input_size)
+        self.age_classify = AgeClassify_(input_size, age_classes)
 
     def forward(self, inputs):
-        sex_out = self.sex_classify(inputs)
+        gender_out = self.gender_classify(inputs)
         age_out = self.age_classify(inputs)
-        return {'sex': sex_out, 'age': age_out}
+        return {'gender': gender_out, 'age': age_out}
 
 
 class Classify(nn.Module):
-    def __init__(self, input_size=2048):
+    def __init__(self, input_size=2048, age_classes=10):
         super().__init__()
-        self.sex_classify = SexClassify(input_size)
-        self.age_classify = AgeClassify(input_size)
+        self.gender_classify = SexClassify(input_size)
+        self.age_classify = AgeClassify(input_size, age_classes)
 
     def forward(self, inputs):
-        sex_out = self.sex_classify(inputs)
+        gender_out = self.gender_classify(inputs)
         age_out = self.age_classify(inputs)
-        return {'sex': sex_out, 'age': age_out}
+        return {'gender': gender_out, 'age': age_out}

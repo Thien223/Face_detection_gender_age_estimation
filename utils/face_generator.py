@@ -49,9 +49,6 @@ def img_transform(image_filepaths, age):
             new_img = new_img.save(new_img_path_female)
     return new_img
 
-
-
-import os
 if __name__ =='__main__':
     all_face={}
     max_count = 4000

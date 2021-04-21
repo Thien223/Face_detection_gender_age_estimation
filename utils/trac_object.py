@@ -1,13 +1,13 @@
 from collections import OrderedDict
 
-import cv2
+from cv2 import cv2
 import numpy as np
 # import the necessary packages
 from scipy.spatial import distance as dist
 
 
 class CentroidTracker():
-	def __init__(self, maxDisappeared=10):
+	def __init__(self, maxDisappeared=40):
 		# initialize the next unique object ID along with two ordered
 		# dictionaries used to keep track of mapping a given object
 		# ID to its centroid and number of consecutive frames it has
@@ -82,6 +82,11 @@ class CentroidTracker():
 			# goal will be to match an input centroid to an existing
 			# object centroid
 			D = dist.cdist(np.array(objectCentroids), inputCentroids)
+			#### filter out the centroids distance that greater than 150 pixels
+			D_ = np.expand_dims(D[np.where(D < 150)], axis=1)
+			# print(f'Distance: {D}')
+			# print(f'objectCentroids: {objectCentroids}')
+			# print(f'inputCentroids: {inputCentroids}')
 
 			# in order to perform this matching we must (1) find the
 			# smallest value in each row and then (2) sort the row
@@ -89,7 +94,6 @@ class CentroidTracker():
 			# with the smallest value as at the *front* of the index
 			# list
 			rows = D.min(axis=1).argsort()
-
 			# next, we perform a similar process on the columns by
 			# finding the smallest value in each column and then
 			# sorting using the previously computed row index list
@@ -103,25 +107,31 @@ class CentroidTracker():
 
 			# loop over the combination of the (row, column) index
 			# tuples
-			for (row, col) in zip(rows, cols):
+			# print(f'rows: {rows}')
+			# print(f'cols: {cols}')
+			for i, (row, col) in enumerate(zip(rows, cols)):
 				# if we have already examined either the row or
 				# column value before, ignore it
 				# val
 				if row in usedRows or col in usedCols:
 					continue
-
+				# if D <= 30:
+				# else:
+				# 	for i in range(0, len(inputCentroids)):
+				# 		self.register(inputCentroids[i])
 				# otherwise, grab the object ID for the current row,
 				# set its new centroid, and reset the disappeared
 				# counter
-				objectID = objectIDs[row]
-				self.objects[objectID] = inputCentroids[col]
-				self.disappeared[objectID] = 0
-
-				# indicate that we have examined each of the row and
-				# column indexes, respectively
-				usedRows.add(row)
-				usedCols.add(col)
-
+				# print(D[row,col])
+				# if D[row,col] <=30:
+				if D[row] in D_:
+					objectID = objectIDs[row]
+					self.objects[objectID] = inputCentroids[col]
+					self.disappeared[objectID] = 0
+					# indicate that we have examined each of the row and
+					# column indexes, respectively
+					usedRows.add(row)
+					usedCols.add(col)
 			# compute both the row and column index we have NOT yet
 			# examined
 			unusedRows = set(range(0, D.shape[0])).difference(usedRows)
@@ -130,21 +140,27 @@ class CentroidTracker():
 			# in the event that the number of object centroids is
 			# equal or greater than the number of input centroids
 			# we need to check and see if some of these objects have
-			# potentially disappeared
+			# potentially disappearedq
 			if D.shape[0] >= D.shape[1]:
 				# loop over the unused row indexes
 				for row in unusedRows:
+
 					# grab the object ID for the corresponding row
 					# index and increment the disappeared counter
+					# print(f'trac_object 128 row: {row}')
+					# print(f'trac_object 128 objectIDs: {objectIDs}')
+					# if D[row] in D_:
 					objectID = objectIDs[row]
 					self.disappeared[objectID] += 1
-
 					# check to see if the number of consecutive
 					# frames the object has been marked "disappeared"
 					# for warrants deregistering the object
 					if self.disappeared[objectID] > self.maxDisappeared:
 						self.deregister(objectID)
-
+				# else:
+				# 	for col in unusedCols:
+				# 		print(f'register centroid {inputCentroids[col]}')
+				# 		self.register(inputCentroids[col])
 			# otherwise, if the number of input centroids is greater
 			# than the number of existing object centroids we need to
 			# register each new input centroid as a trackable object
@@ -155,23 +171,47 @@ class CentroidTracker():
 		# return the set of trackable objects
 		return self.objects
 
+#
+# def createTrackerByName(trackerType):
+# 	# Create a tracker based on tracker name
+# 	if trackerType == 'BOOSTING':
+# 		tracker = cv2.TrackerBoosting_create()
+# 	elif trackerType == 'MIL':
+# 		tracker = cv2.TrackerMIL_create()
+# 	elif trackerType == 'KCF':
+# 		tracker = cv2.TrackerKCF_create()
+# 	elif trackerType == 'TLD':
+# 		tracker = cv2.TrackerTLD_create()
+# 	elif trackerType == 'MEDIANFLOW':
+# 		tracker = cv2.TrackerMedianFlow_create()
+# 	elif trackerType == 'GOTURN':
+# 		tracker = cv2.TrackerGOTURN_create()
+# 	elif trackerType == 'MOSSE':
+# 		tracker = cv2.TrackerMOSSE_create()
+# 	else:
+# 		tracker = cv2.TrackerCSRT_create()
+# 	return tracker
 
-def createTrackerByName(trackerType):
-	# Create a tracker based on tracker name
-	if trackerType == 'BOOSTING':
-		tracker = cv2.TrackerBoosting_create()
-	elif trackerType == 'MIL':
-		tracker = cv2.TrackerMIL_create()
-	elif trackerType == 'KCF':
-		tracker = cv2.TrackerKCF_create()
-	elif trackerType == 'TLD':
-		tracker = cv2.TrackerTLD_create()
-	elif trackerType == 'MEDIANFLOW':
-		tracker = cv2.TrackerMedianFlow_create()
-	elif trackerType == 'GOTURN':
-		tracker = cv2.TrackerGOTURN_create()
-	elif trackerType == 'MOSSE':
-		tracker = cv2.TrackerMOSSE_create()
-	else:
-		tracker = cv2.TrackerCSRT_create()
-	return tracker
+
+#
+#
+# from scipy.spatial import distance as dist
+# import numpy as np
+# np.random.seed(42)
+# objectCentroids = np.random.uniform(size=(2, 2))
+# centroids = np.random.uniform(size=(2, 2))
+# D = dist.cdist(objectCentroids, centroids)
+#
+# D.shape
+# array([[0.82421549, 0.32755369, 0.33198071],
+#    [0.72642889, 0.72506609, 0.17058938]])
+#
+# mask = D<0.5
+# D = D[D<0.5]
+# D = np.expand_dims(D[np.where(D<0.5)],axis=1)
+# D = np.take(D, np.where(D>0.5), axis=1)
+# D = D[(D<0.5)]
+# array([0.32755369, 0.17058938])
+# rows = D.min(axis=1).argsort()
+# rows
+# array([1, 0])

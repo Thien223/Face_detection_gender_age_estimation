@@ -1,13 +1,13 @@
 import datetime
 import os
 import time
-import cv2
+from cv2 import cv2
 # cascPath = os.path.dirname(cv2.__file__) + "/data/haarcascade_frontalface_default.xml" ## get classifier from cv2 data folder
 import torch
 
 from hparams import *
 
-sex_choice={1:'Male', 2:'Female'}
+gender_choice={1:'Male', 2:'Female'}
 age_choice={1:'<10', 2:'10~19', 3:'20~29', 4:'30~39', 5:'40~49', 6:'50~59', 7:'60~69', 8:'70~79', 9:'80~89', 10:'>=90'}
 
 
@@ -100,13 +100,13 @@ def video_detector():
 			# Predict Gender and Age
 			age_gender_output = age_gender_model(vectors)
 
-			sex_indicate = [i + 1 for i in age_gender_output['sex'].argmax(dim=-1).tolist()]
+			gender_indicate = [i + 1 for i in age_gender_output['gender'].argmax(dim=-1).tolist()]
 			age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-			overlay_text = "%s, %s" % (sex_choice.get(sex_indicate[0]), age_choice.get(age_indicate[0]))
+			overlay_text = "%s, %s" % (gender_choice.get(gender_indicate[0]), age_choice.get(age_indicate[0]))
 			# Draw a rectangle around the faces
 			cv2.rectangle(frames, (x - extend, y - extend), (x + w + extend, y + h + extend), (0, 255, 0), 2)
 			cv2.putText(frames, overlay_text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
-			print(f"시점: {str(datetime.datetime.now().time())} -- 성별: {sex_choice.get(sex_indicate[0])} -- 나이: {age_choice.get(age_indicate[0])}\n")
+			print(f"시점: {str(datetime.datetime.now().time())} -- 성별: {gender_choice.get(gender_indicate[0])} -- 나이: {age_choice.get(age_indicate[0])}\n")
 
 			### save face image for debugging
 			img_path = f'templates\\{overlay_text}_{time.time()}.jpg'

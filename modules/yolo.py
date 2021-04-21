@@ -8,7 +8,7 @@ import colorsys
 import datetime
 import os
 
-import cv2
+from cv2 import cv2
 import numpy as np
 import torch
 from PIL import ImageDraw, Image
@@ -18,7 +18,7 @@ from keras.models import load_model
 from modules.model import eval
 from utils.trac_object import CentroidTracker
 
-sex_choice = {1: 'male', 2: 'female'}
+gender_choice = {1: 'male', 2: 'female'}
 age_choice = {1: '<26', 2: '27~37', 3: '37~48', 4: '49~59', 5: '>60'}
 # age_choice = {1: '<10', 2: '11~20', 3: '21~30', 4: '31~40', 5: '41~50', 6: '51~60', 7: '61~70', 8: '71~80', 9: '81~90', 10: '>90'}
 
@@ -350,9 +350,9 @@ def detect(model, file_path, age_gender_model):
             vectors = image_loader_(face_img)
             age_gender_output = age_gender_model(vectors)
             ## convert predicted index to meaningful label
-            # sex_indicate = [i + 1 for i in age_gender_output['sex'].argmax(dim=-1).tolist()]
+            # gender_indicate = [i + 1 for i in age_gender_output['gender'].argmax(dim=-1).tolist()]
             # age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-            gender = age_gender_output['sex'].argmax(dim=-1)
+            gender = age_gender_output['gender'].argmax(dim=-1)
             age = age_gender_output['age'].argmax(dim=-1)
         except Exception as e:
             print(e)
@@ -441,13 +441,13 @@ def detect_video(model, video_path=None, output=None, age_gender_model=None, ori
                 vectors = image_loader_(face_img)
                 age_gender_output = age_gender_model(vectors)
                 ## convert predicted index to meaningful label
-                sex_indicate = [i + 1 for i in age_gender_output['sex'].argmax(dim=-1).tolist()]
+                gender_indicate = [i + 1 for i in age_gender_output['gender'].argmax(dim=-1).tolist()]
                 age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-                # overlay_text = "%s, %s" % (sex_choice.get(sex_indicate[0]), age_choice.get(age_indicate[0]))
+                # overlay_text = "%s, %s" % (gender_choice.get(gender_indicate[0]), age_choice.get(age_indicate[0]))
                 # Draw a rectangle around the faces (we plot the resule, so, the text will not appear, plotting frames to see the text
                 # cv2.putText(frames, overlay_text, (y1, x1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
-                print(f"시점: {str(datetime.datetime.now().time())} -- 성별: {sex_choice.get(sex_indicate[0])} -- 나이: {age_choice.get(age_indicate[0])}\n")
-                gender = sex_choice.get(sex_indicate[0])
+                print(f"시점: {str(datetime.datetime.now().time())} -- 성별: {gender_choice.get(gender_indicate[0])} -- 나이: {age_choice.get(age_indicate[0])}\n")
+                gender = gender_choice.get(gender_indicate[0])
                 age = age_choice.get(age_indicate[0])
             except Exception as e:
                 continue
@@ -697,7 +697,7 @@ def detect_video(model, video_path=None, output=None, age_gender_model=None, ori
 # life_time = 60
 #
 # def detect_video(model, video_path=None, output=None, age_gender_model=None):
-#     sex_choice = {1: 'Male', 2: 'Female'}
+#     gender_choice = {1: 'Male', 2: 'Female'}
 #     age_choice = {1: '<10', 2: '10~19', 3: '20~29', 4: '30~39', 5: '40~49', 6: '50~59', 7: '60~69', 8: '70~79', 9: '80~89', 10: '>=90'}
 #
 #     if video_path == 'stream':
@@ -762,12 +762,12 @@ def detect_video(model, video_path=None, output=None, age_gender_model=None, ori
 #                     vectors = image_loader_(face_img)
 #                     age_gender_output = age_gender_model(vectors)
 #                     ## convert predicted index to meaningful label
-#                     sex_indicate = [i + 1 for i in age_gender_output['sex'].argmax(dim=-1).tolist()]
+#                     gender_indicate = [i + 1 for i in age_gender_output['gender'].argmax(dim=-1).tolist()]
 #                     age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-#                     overlay_text = "%s, %s" % (sex_choice.get(sex_indicate[0]), age_choice.get(age_indicate[0]))
+#                     overlay_text = "%s, %s" % (gender_choice.get(gender_indicate[0]), age_choice.get(age_indicate[0]))
 #                     # Draw a rectangle around the faces (we plot the resule, so, the text will not appear, plotting frames to see the text
 #                     cv2.putText(frames, overlay_text, (y1, x1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2, cv2.LINE_AA)
-#                     print(f"시점: {str(datetime.datetime.now().time())} -- 성별: {sex_choice.get(sex_indicate[0])} -- 나이: {age_choice.get(age_indicate[0])}\n")
+#                     print(f"시점: {str(datetime.datetime.now().time())} -- 성별: {gender_choice.get(gender_indicate[0])} -- 나이: {age_choice.get(age_indicate[0])}\n")
 #                 except Exception as e:
 #                     print(e)
 #                     continue

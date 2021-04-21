@@ -1,4 +1,4 @@
-import cv2
+from cv2 import cv2
 
 from faced import FaceDetector
 from faced.utils import annotate_image
@@ -22,7 +22,7 @@ from faced.utils import annotate_image
 #
 #
 
-import cv2
+from cv2 import cv2
 from hparams import *
 import numpy as np
 import os
