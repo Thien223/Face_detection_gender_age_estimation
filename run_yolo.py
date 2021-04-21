@@ -368,7 +368,7 @@ def send(id, gender, age, going_in):
 ### get pretrained model of age and gender detection
 def get_model(model_path=None):
 	if model_path is None:
-		model_path = 'models/checkpoints/vgg-epochs_370-step_0-gender_acc_98.51895920092683-age_acc_83.47371387418981.pth'
+		model_path = 'models/checkpoints/vgg-epochs_464-step_0-gender_acc_98.5440541048281-age_acc_83.13920721397709.pth'
 	# model_path = 'models/vgg19-epochs_97-step_0-gender_accuracy_0.979676459052346.pth'
 	checkpoint = torch.load(model_path, map_location=device)
 	model_type = checkpoint['model_type']
@@ -502,6 +502,28 @@ def detect_out(model, args):
 					           radius=4,
 					           color=(0, 255, 0),
 					           thickness=1)
+					for obj in person_objs:
+						if obj.id not in current_object_ids:  ### face disappeared
+							### human recognition model does not have gender and age info
+							gender = 'unknown'
+							age = -1
+							try:
+								going_out = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+								### remove disappeared object from face_objs and saved face_id
+								person_objs.remove(obj)
+								saved_object_ids.remove(obj.id)
+								# print(f'id: {obj.id}')
+								# print(f'gender: {gender}')
+								# print(f'age: {age}')
+								# print(f'going_in: {going_in}')
+								# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+								# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+								if going_out:
+									send(obj.id, gender, age, going_out)
+							except Exception as e:
+								person_objs.remove(obj)
+								saved_object_ids.remove(obj.id)
+								continue
 			# Print time (inference + NMS)
 			# print(f'{s}Done. ({t2 - t1:.3f}s)')
 			# Stream results
@@ -530,7 +552,7 @@ def detect_out(model, args):
 	cv2.destroyAllWindows()
 
 
-def detect_in(model, age_gender_model=None, save_output=False, video_path=None):
+def detect_in(model, age_gender_model, args):
 	"""
 	face detection to detect going in people
 	"""
@@ -555,31 +577,15 @@ def detect_in(model, age_gender_model=None, save_output=False, video_path=None):
 	saved_object_ids = []
 	face_objs = []
 	current_object_ids = []
-
 	dataset = LoadStreams(video_path)
-
-
-	expand_ratio = 0.1
+	expand_ratio = 0.0
 	for path, img, img0, vid_cap in dataset:
-		frames=img0[0]
-		# img = torch.from_numpy(img).to(device)
-		# img = img.half() if args.half else img.float()  # uint8 to fp16/32
-		# img /= 255.0  # 0 - 255 to 0.0 - 1.0
-		# if img.ndimension() == 3:
-		# 	img = img.unsqueeze(0)
+		frames = img0[0]
 		image = Image.fromarray(frames)
 		with torch.no_grad():
 			image, faces = model.detect_image(image)
-		# except Exception as e:
-		# 	print(frames)
-		# 	print('=========================================')
-		# 	print(ret)
-		# 	print('=========================================')
-		# 	print(f' new_yolo.py line 414: {e}')
-		# 	break
 		gender = 'unknown'
 		age = 'unknown'
-
 		tracking_faces = []
 
 		for i, (x1, y1, x2, y2) in enumerate(
@@ -609,14 +615,6 @@ def detect_in(model, age_gender_model=None, save_output=False, video_path=None):
 					age_indicate = round(float(pred_age))
 					gender = gender_choice.get(gender_indicate)
 					age = age_choice.get(age_indicate)
-				#
-				# print(f'\n====SUCCEqpe {face_img.shape}')
-
-				# print(f'\n===============================')
-				# print(f"gender:  {gender_indicate} - {pred_gender}")
-				# print(f"age:  {age_indicate} - {pred_age}")
-				# print(f"gender {gender}, age {age}")
-				# print(f'===============================\n')
 			except Exception as e:
 				print(f'run_yolo_new.py line 510. Error {e}')
 				continue
@@ -625,7 +623,7 @@ def detect_in(model, age_gender_model=None, save_output=False, video_path=None):
 			current_object_ids.append(object_id)
 			if object_id not in saved_object_ids:
 				if gender != 'unknown' and age != 'unknown':
-					print(f'there are new object: {object_id}')
+					# print(f'there are new object: {object_id}')
 					## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
 					new_face = Face(id=object_id, gender=[gender], age=[age], first_centroid=centroid)
 					face_objs.append(new_face)
@@ -644,9 +642,9 @@ def detect_in(model, age_gender_model=None, save_output=False, video_path=None):
 					### update
 					face_objs[saved_object_ids.index(object_id)] = old_face
 			#### draw rectangle bounding box for each face
-			text = f"ID:{object_id}--gender:{gender}--age:{age}"
-			# print(f'\n===============================')
-			# print(text)
+			text = f"ID:{object_id}"
+			# print(f'\n===============================')q
+			if gender != 'unknown' and age != 'unknown': print(f"ID:{object_id}--gender {gender}--age {age}")
 			# print(f'===============================\n')
 			cv2.putText(img=frames,
 			            text=text,
@@ -677,16 +675,17 @@ def detect_in(model, age_gender_model=None, save_output=False, video_path=None):
 					# print(f'going_in: {going_in}')
 					# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
 					# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-					send(obj.id, gender, age, going_in)
+					if going_in:
+						send(obj.id, gender, age, going_in)
 				except Exception as e:
 					face_objs.remove(obj)
 					saved_object_ids.remove(obj.id)
 					continue
-		cv2.imshow('view', frames)
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
-		# if save_output:
-		# 	out_stream_writer.write(frames)
+		if args.view_img:
+			cv2.imshow('view', frames)
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
+
 
 	cv2.destroyAllWindows()
 	# if save_output:
@@ -722,18 +721,17 @@ if __name__ == "__main__":
 	# app.run(host='0.0.0.0', port=80,threaded=True)
 	args = get_args()
 	yolov3 = YOLO(args)
-	gender_model, age_model = get_model()
-	age_gender_model = (gender_model, age_model)
-	save_output = True if args.output else False
+	yolov5 = attempt_load(args.weights, map_location=device)
+
+	age_gender_model = get_model()
 
 	# detect_img(yolov3, r'G:\locs_projects\on_working\images\test_images', age_gender_model)
 	# detect_img(yolov3, r'val_images', age_gender_model)
 
-	#
-	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, save_output, args.video))
 
+	# #
+	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
 	# Load model
-	yolov5 = attempt_load(args.weights, map_location=device)
 	run_out = threading.Thread(target=detect_out, args=(yolov5, args))
 
 	# detect_out(yolov5, args)

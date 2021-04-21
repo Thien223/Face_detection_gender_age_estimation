@@ -8,7 +8,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 import torch
 
-img_size = 96
+img_size = 64
 
 # img = Image.open(img_path)
 # print(img.size)
