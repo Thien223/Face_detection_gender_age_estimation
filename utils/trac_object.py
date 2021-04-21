@@ -104,26 +104,17 @@ class CentroidTracker():
 			# of the rows and column indexes we have already examined
 			usedRows = set()
 			usedCols = set()
-
 			# loop over the combination of the (row, column) index
 			# tuples
-			# print(f'rows: {rows}')
-			# print(f'cols: {cols}')
 			for i, (row, col) in enumerate(zip(rows, cols)):
 				# if we have already examined either the row or
 				# column value before, ignore it
 				# val
 				if row in usedRows or col in usedCols:
 					continue
-				# if D <= 30:
-				# else:
-				# 	for i in range(0, len(inputCentroids)):
-				# 		self.register(inputCentroids[i])
 				# otherwise, grab the object ID for the current row,
 				# set its new centroid, and reset the disappeared
 				# counter
-				# print(D[row,col])
-				# if D[row,col] <=30:
 				if D[row] in D_:
 					objectID = objectIDs[row]
 					self.objects[objectID] = inputCentroids[col]
@@ -144,12 +135,8 @@ class CentroidTracker():
 			if D.shape[0] >= D.shape[1]:
 				# loop over the unused row indexes
 				for row in unusedRows:
-
 					# grab the object ID for the corresponding row
 					# index and increment the disappeared counter
-					# print(f'trac_object 128 row: {row}')
-					# print(f'trac_object 128 objectIDs: {objectIDs}')
-					# if D[row] in D_:
 					objectID = objectIDs[row]
 					self.disappeared[objectID] += 1
 					# check to see if the number of consecutive
@@ -157,10 +144,9 @@ class CentroidTracker():
 					# for warrants deregistering the object
 					if self.disappeared[objectID] > self.maxDisappeared:
 						self.deregister(objectID)
-				# else:
-				# 	for col in unusedCols:
-				# 		print(f'register centroid {inputCentroids[col]}')
-				# 		self.register(inputCentroids[col])
+					if D[row] not in D_:
+						for col in unusedCols:
+							self.register(inputCentroids[col])
 			# otherwise, if the number of input centroids is greater
 			# than the number of existing object centroids we need to
 			# register each new input centroid as a trackable object
