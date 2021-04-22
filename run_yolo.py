@@ -411,7 +411,7 @@ def detect_out(model, args):
 	# Set Dataloader
 	vid_path, vid_writer = None, None
 	#### tracking objects
-	tracker = CentroidTracker(maxDisappeared=20)
+	tracker = CentroidTracker(maxDisappeared=40)
 	### detected object ids
 	saved_object_ids = []
 	### person objects list
@@ -469,6 +469,7 @@ def detect_out(model, args):
 				objects = tracker.update(tracking_people)
 				### object ids in current frame (reset each frame)
 				current_object_ids = set()
+
 				for (object_id, centroid) in objects.items():
 					current_object_ids.add(object_id)
 					if object_id not in saved_object_ids:
@@ -502,29 +503,29 @@ def detect_out(model, args):
 					           radius=4,
 					           color=(0, 255, 0),
 					           thickness=1)
-					for obj in person_objs:
-						if obj.id not in current_object_ids:  ### face disappeared
-							### human recognition model does not have gender and age info
-							gender = 'unknown'
-							age = -1
-							try:
-								going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
-								### remove disappeared object from face_objs and saved face_id
-								person_objs.remove(obj)
-								saved_object_ids.remove(obj.id)
-								# print(f'id: {obj.id}')
-								# print(f'gender: {gender}')
-								# print(f'age: {age}')
-								# print(f'going_in: {going_in}')
-								# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
-								# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-								if not going_in:
-									print(f'Someone is going out')
-									send(obj.id, gender, age, going_in)
-							except Exception as e:
-								person_objs.remove(obj)
-								saved_object_ids.remove(obj.id)
-								continue
+				for obj in person_objs:
+					if obj.id not in current_object_ids:  ### face disappeared
+						### human recognition model does not have gender and age info
+						gender = 'unknown'
+						age = -1
+						try:
+							going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+							### remove disappeared object from face_objs and saved face_id
+							person_objs.remove(obj)
+							saved_object_ids.remove(obj.id)
+							# print(f'id: {obj.id}')
+							# print(f'gender: {gender}')
+							# print(f'age: {age}')
+							# print(f'going_in: {going_in}')
+							# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+							# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+							if not going_in:
+								print(f'Someone is going out')
+								send(obj.id, gender, age, going_in)
+						except Exception as e:
+							person_objs.remove(obj)
+							saved_object_ids.remove(obj.id)
+							continue
 			# Print time (inference + NMS)
 			# print(f'{s}Done. ({t2 - t1:.3f}s)')
 			# Stream results
@@ -631,7 +632,7 @@ def detect_in(model, age_gender_model, args):
 				if gender != 'unknown' and age != 'unknown':
 					# print(f'there are new object: {object_id}')
 					## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
-					new_face = Face(id=object_id, gender=[gender], age=[age], first_centroid=centroid)
+					new_face = Face(id_=object_id, gender=[gender], age=[age], first_centroid=centroid)
 					face_objs.append(new_face)
 					saved_object_ids.append(object_id)
 
@@ -739,6 +740,6 @@ if __name__ == "__main__":
 	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
 	run_out = threading.Thread(target=detect_out, args=(yolov5, args))
 	run_out.start()
-	# run_in.start()
+	run_in.start()
 	run_out.join()
 	run_in.join()
