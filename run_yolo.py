@@ -361,7 +361,7 @@ def send(id, gender, age, going_in):
 		query=str_,
 		variables={}
 	)
-	# print(data)
+	print(data)
 	requests.post(URL, data=json.dumps(data), headers=headers)
 
 
@@ -417,8 +417,7 @@ def detect_out(model, args):
 	saved_object_ids = []
 	### person objects list
 	person_objs = []
-	### object ids in current frame
-	current_object_ids = []
+
 	dataset = LoadStreams(video_path, img_size=img_size, stride=stride)
 	for path, img, im0s, vid_cap in dataset:
 		img = torch.from_numpy(img).to(device)
@@ -469,8 +468,10 @@ def detect_out(model, args):
 							plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=3)
 				### update tracking objects
 				objects = tracker.update(tracking_people)
+				### object ids in current frame (reset each frame)
+				current_object_ids = set()
 				for (object_id, centroid) in objects.items():
-					current_object_ids.append(object_id)
+					current_object_ids.add(object_id)
 					if object_id not in saved_object_ids:
 						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
 						new_person = Person(id_=object_id, first_centroid=centroid)
@@ -508,7 +509,8 @@ def detect_out(model, args):
 							gender = 'unknown'
 							age = -1
 							try:
-								going_out = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+								going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+								print(f'going_in??? {going_in}')
 								### remove disappeared object from face_objs and saved face_id
 								person_objs.remove(obj)
 								saved_object_ids.remove(obj.id)
@@ -518,8 +520,8 @@ def detect_out(model, args):
 								# print(f'going_in: {going_in}')
 								# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
 								# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-								if going_out:
-									send(obj.id, gender, age, going_out)
+								if not going_in:
+									send(obj.id, gender, age, going_in)
 							except Exception as e:
 								person_objs.remove(obj)
 								saved_object_ids.remove(obj.id)
@@ -547,6 +549,8 @@ def detect_out(model, args):
 						h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 						vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
 					vid_writer.write(im0)
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
 	cv2.destroyAllWindows()
@@ -576,7 +580,6 @@ def detect_in(model, age_gender_model, args):
 	tracker = CentroidTracker()
 	saved_object_ids = []
 	face_objs = []
-	current_object_ids = []
 	dataset = LoadStreams(video_path)
 	expand_ratio = 0.0
 	for path, img, img0, vid_cap in dataset:
@@ -619,8 +622,12 @@ def detect_in(model, age_gender_model, args):
 				print(f'run_yolo_new.py line 510. Error {e}')
 				continue
 		objects = tracker.update(tracking_faces)
+		# print(f'current_object_ids {current_object_ids}')
+		# print(f'objects {objects.items()}')
+		### current frame object ids (reset each frame)
+		current_object_ids = set()
 		for (object_id, centroid) in objects.items():
-			current_object_ids.append(object_id)
+			current_object_ids.add(object_id)
 			if object_id not in saved_object_ids:
 				if gender != 'unknown' and age != 'unknown':
 					# print(f'there are new object: {object_id}')
@@ -666,6 +673,7 @@ def detect_in(model, age_gender_model, args):
 				age = max(set(obj.age), key=obj.age.count)
 				try:
 					going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
+
 					### remove disappeared object from face_objs and saved face_id
 					face_objs.remove(obj)
 					saved_object_ids.remove(obj.id)
@@ -716,26 +724,20 @@ def get_args():
 
 
 if __name__ == "__main__":
-	#
-	# print(("Starting server..."))
-	# app.run(host='0.0.0.0', port=80,threaded=True)
+	## load arguments
 	args = get_args()
+	### load models
 	yolov3 = YOLO(args)
 	yolov5 = attempt_load(args.weights, map_location=device)
-
 	age_gender_model = get_model()
 
 	# detect_img(yolov3, r'G:\locs_projects\on_working\images\test_images', age_gender_model)
 	# detect_img(yolov3, r'val_images', age_gender_model)
 
 
-	# #
+	## run 2 models on separate threads
 	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
-	# Load model
 	run_out = threading.Thread(target=detect_out, args=(yolov5, args))
-
-	# detect_out(yolov5, args)
-
 	run_out.start()
 	run_in.start()
 	run_out.join()

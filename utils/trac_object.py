@@ -83,7 +83,7 @@ class CentroidTracker():
 			# object centroid
 			D = dist.cdist(np.array(objectCentroids), inputCentroids)
 			#### filter out the centroids distance that greater than 150 pixels
-			D_ = np.expand_dims(D[np.where(D < 150)], axis=1)
+			D_ = np.expand_dims(D[np.where(D < 250)], axis=1)
 			# print(f'Distance: {D}')
 			# print(f'objectCentroids: {objectCentroids}')
 			# print(f'inputCentroids: {inputCentroids}')
