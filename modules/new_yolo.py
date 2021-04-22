@@ -12,10 +12,11 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import queue
 import numpy as np
 from PIL import ImageDraw, Image
-import tensorflow.python.keras.backend as K ### use for new tensorflow version
+import tensorflow.python.keras.backend as K  ### use for new tensorflow version
 import tensorflow as tf
 from models.common import Conv
 from cv2 import cv2
+
 tf.compat.v1.disable_eager_execution()
 # from keras import backend as K ### use for old tensorflow version
 from keras.models import load_model
@@ -157,8 +158,8 @@ class YOLO(object):
 
 
 class Face(object):
-	def __init__(self, id, gender, age, first_centroid=None, last_centroid=None):
-		self.id = id
+	def __init__(self, id_, gender, age, first_centroid=None, last_centroid=None):
+		self.id = id_
 		self.gender = gender
 		self.age = age
 		self.first_centroid = first_centroid
@@ -208,6 +209,7 @@ class Ensemble(torch.nn.ModuleList):
 	# Ensemble of models
 	def __init__(self):
 		super(Ensemble, self).__init__()
+
 	def forward(self, x, augment=False):
 		y = []
 		for module in self:
@@ -238,4 +240,3 @@ def attempt_load(weights, map_location=None):
 		for k in ['names', 'stride']:
 			setattr(model, k, getattr(model[-1], k))
 		return model  # return ensemble
-

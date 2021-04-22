@@ -6,13 +6,13 @@ import time
 from pathlib import Path
 import threading
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
 import torch
 from PIL import Image
 from cv2 import cv2
+
+from modules.new_yolo import Face, Person, YOLO, attempt_load
 from train_module.data_helper import _age_categorization
-from models.experimental import attempt_load
-from modules.new_yolo import YOLO, Face, Person, VideoCapture
 from utils.datasets import LoadStreams
 from utils.general import check_img_size, non_max_suppression, scale_coords, \
 	xyxy2xywh, increment_path
@@ -26,8 +26,8 @@ torch.backends.deterministic = True
 torch.backends.benchmark = False
 random.seed(1542)
 np.random.seed(1542)
-tf.random.set_seed(1542)
-tf.compat.v1.disable_eager_execution()
+# tf.random.set_seed(1542)
+# tf.compat.v1.disable_eager_execution()
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -338,7 +338,6 @@ def image_loader_(face_img):
 
 def image_loader(face_img_path):
 	from PIL import Image
-	from torchvision import transforms
 	from train_module.data_helper import image_preprocess
 	# image_set = []
 	preprocess = image_preprocess(img_path=None)
@@ -510,7 +509,6 @@ def detect_out(model, args):
 							age = -1
 							try:
 								going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
-								print(f'going_in??? {going_in}')
 								### remove disappeared object from face_objs and saved face_id
 								person_objs.remove(obj)
 								saved_object_ids.remove(obj.id)
@@ -521,6 +519,7 @@ def detect_out(model, args):
 								# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
 								# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
 								if not going_in:
+									print(f'Someone is going out')
 									send(obj.id, gender, age, going_in)
 							except Exception as e:
 								person_objs.remove(obj)
@@ -684,6 +683,7 @@ def detect_in(model, age_gender_model, args):
 					# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
 					# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
 					if going_in:
+						print(f'Someone is going in')
 						send(obj.id, gender, age, going_in)
 				except Exception as e:
 					face_objs.remove(obj)
@@ -739,6 +739,6 @@ if __name__ == "__main__":
 	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
 	run_out = threading.Thread(target=detect_out, args=(yolov5, args))
 	run_out.start()
-	run_in.start()
+	# run_in.start()
 	run_out.join()
 	run_in.join()
