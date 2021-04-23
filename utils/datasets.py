@@ -281,16 +281,12 @@ class LoadStreams:  # multiple IP or RTSP cameras
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps = cap.get(cv2.CAP_PROP_FPS) % 100
             _, self.imgs[i] = cap.read()  # guarantee first frame
-            while self.imgs[i] is None:
-                ### if there are problem with webcam, recreate
-                cap = cv2.VideoCapture(eval(s) if s.isnumeric() else s)
-                _, self.imgs[i] = cap.read()  # guarantee first frame
             thread = Thread(target=self.update, args=([i, cap]), daemon=True)
             print(f' success ({w}x{h} at {fps:.2f} FPS).')
             thread.start()
         print('')  # newline
 
-        # check for common shapes
+
         s = np.stack([letterbox(x, self.img_size, stride=self.stride)[0].shape for x in self.imgs], 0)  # shapes
         self.rect = np.unique(s, axis=0).shape[0] == 1  # rect inference if all shapes equal
         if not self.rect:
@@ -305,6 +301,12 @@ class LoadStreams:  # multiple IP or RTSP cameras
             cap.grab()
             if n == 2:  # read every 4th frame
                 _, self.imgs[index] = cap.retrieve()
+                while self.imgs[index] is None:
+                    ### if there are problem with webcam, recreate
+                    cap = cv2.VideoCapture(self.sources[0])
+                    cap.grab()
+                    _, self.imgs[index] = cap.retrieve()  # guarantee first frame
+
                 n = 0
             time.sleep(0.005)  # wait time
 
@@ -320,6 +322,8 @@ class LoadStreams:  # multiple IP or RTSP cameras
             raise StopIteration
 
         # Letterbox
+        # check for common shapes
+        print(f'self.imgs {len(self.imgs)}')
         img = [letterbox(x, self.img_size, auto=self.rect, stride=self.stride)[0] for x in img0]
 
         # Stack

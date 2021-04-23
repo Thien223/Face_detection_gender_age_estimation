@@ -411,7 +411,7 @@ def detect_out(model, args):
 	# Set Dataloader
 	vid_path, vid_writer = None, None
 	#### tracking objects
-	tracker = CentroidTracker(maxDisappeared=40)
+	tracker = CentroidTracker(maxDisappeared=15)
 	### detected object ids
 	saved_object_ids = []
 	### person objects list
@@ -465,67 +465,67 @@ def detect_out(model, args):
 						if args.save_img or args.view_img:  # Add bbox to image
 							label = f'{names[int(cls)]} {conf:.2f}'
 							plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=3)
-				### update tracking objects
-				objects = tracker.update(tracking_people)
-				### object ids in current frame (reset each frame)
-				current_object_ids = set()
+			### update tracking objects
+			objects = tracker.update(tracking_people)
+			### object ids in current frame (reset each frame)
+			current_object_ids = set()
 
-				for (object_id, centroid) in objects.items():
-					current_object_ids.add(object_id)
-					if object_id not in saved_object_ids:
-						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
-						new_person = Person(id_=object_id, first_centroid=centroid)
-						person_objs.append(new_person)
-						saved_object_ids.append(object_id)
-					else:
-						# print(f'object_id {object_id}')
-						# print(f'saved_object_ids {saved_object_ids}')
-						### when the face object is already in the managing face_objects, update it's info
-						### get and edit
-						old_person = person_objs[saved_object_ids.index(object_id)]
-						old_person.last_centroid = centroid
-						### update
-						person_objs[saved_object_ids.index(object_id)] = old_person
-					#### draw rectangle bounding box for each face
-					text = f"ID:{object_id}"
-					# print(f'\n===============================')
-					# print(text)
-					# print(f'===============================\n')
-					cv2.putText(img=im0,
-					            text=text,
-					            org=(centroid[0] - 10, centroid[1] - 10),
-					            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-					            fontScale=0.55,
-					            color=(0, 255, 0),
-					            thickness=2)
-					cv2.circle(img=im0,
-					           center=(centroid[0], centroid[1]),
-					           radius=4,
-					           color=(0, 255, 0),
-					           thickness=1)
-				for obj in person_objs:
-					if obj.id not in current_object_ids:  ### face disappeared
-						### human recognition model does not have gender and age info
-						gender = 'unknown'
-						age = -1
-						try:
-							going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
-							### remove disappeared object from face_objs and saved face_id
-							person_objs.remove(obj)
-							saved_object_ids.remove(obj.id)
-							# print(f'id: {obj.id}')
-							# print(f'gender: {gender}')
-							# print(f'age: {age}')
-							# print(f'going_in: {going_in}')
-							# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
-							# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-							if not going_in:
-								print(f'Someone is going out')
-								send(obj.id, gender, age, going_in)
-						except Exception as e:
-							person_objs.remove(obj)
-							saved_object_ids.remove(obj.id)
-							continue
+			for (object_id, centroid) in objects.items():
+				current_object_ids.add(object_id)
+				if object_id not in saved_object_ids:
+					## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
+					new_person = Person(id_=object_id, first_centroid=centroid)
+					person_objs.append(new_person)
+					saved_object_ids.append(object_id)
+				else:
+					# print(f'object_id {object_id}')
+					# print(f'saved_object_ids {saved_object_ids}')
+					### when the face object is already in the managing face_objects, update it's info
+					### get and edit
+					old_person = person_objs[saved_object_ids.index(object_id)]
+					old_person.last_centroid = centroid
+					### update
+					person_objs[saved_object_ids.index(object_id)] = old_person
+				#### draw rectangle bounding box for each face
+				text = f"ID:{object_id}"
+				# print(f'\n===============================')
+				# print(text)
+				# print(f'===============================\n')
+				cv2.putText(img=im0,
+							text=text,
+							org=(centroid[0] - 10, centroid[1] - 10),
+							fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+							fontScale=0.55,
+							color=(0, 255, 0),
+							thickness=2)
+				cv2.circle(img=im0,
+						   center=(centroid[0], centroid[1]),
+						   radius=4,
+						   color=(0, 255, 0),
+						   thickness=1)
+			for obj in person_objs:
+				if obj.id not in current_object_ids:  ### face disappeared
+					### human recognition model does not have gender and age info
+					gender = 'unknown'
+					age = -1
+					try:
+						going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+						### remove disappeared object from face_objs and saved face_id
+						person_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						# print(f'id: {obj.id}')
+						# print(f'gender: {gender}')
+						# print(f'age: {age}')
+						# print(f'going_in: {going_in}')
+						# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+						# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+						if not going_in:
+							print(f'Someone is going out')
+							send(obj.id, gender, age, going_in)
+					except Exception as e:
+						person_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						continue
 			# Print time (inference + NMS)
 			# print(f'{s}Done. ({t2 - t1:.3f}s)')
 			# Stream results
@@ -651,7 +651,7 @@ def detect_in(model, age_gender_model, args):
 			#### draw rectangle bounding box for each face
 			text = f"ID:{object_id}"
 			# print(f'\n===============================')q
-			if gender != 'unknown' and age != 'unknown': print(f"ID:{object_id}--gender {gender}--age {age}")
+			# if gender != 'unknown' and age != 'unknown': print(f"ID:{object_id}--gender {gender}--age {age}")
 			# print(f'===============================\n')
 			cv2.putText(img=frames,
 			            text=text,
