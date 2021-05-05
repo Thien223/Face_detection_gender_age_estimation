@@ -11,9 +11,9 @@ import torch
 from PIL import Image
 from cv2 import cv2
 
-from modules.new_yolo import Face, Person, YOLO, attempt_load
+from modules.new_yolo import Face, Person, YOLO, attempt_load, VideoCapture
 from train_module.data_helper import _age_categorization
-from utils.datasets import LoadStreams
+from utils.datasets import LoadStreams, letterbox
 from utils.general import check_img_size, non_max_suppression, scale_coords, \
 	xyxy2xywh, increment_path
 from utils.plots import plot_one_box
@@ -28,7 +28,6 @@ random.seed(1542)
 np.random.seed(1542)
 # tf.random.set_seed(1542)
 # tf.compat.v1.disable_eager_execution()
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
@@ -411,60 +410,82 @@ def detect_out(model, args):
 	# Set Dataloader
 	vid_path, vid_writer = None, None
 	#### tracking objects
-	tracker = CentroidTracker(maxDisappeared=15)
+	tracker = CentroidTracker(maxDisappeared=60)
 	### detected object ids
 	saved_object_ids = []
 	### person objects list
 	person_objs = []
+	#
+	# dataset = LoadStreams(video_path, img_size=img_size, stride=stride)
+	# for path, img, im0s, vid_cap in dataset:
+	# 	img = torch.from_numpy(img).to(device)
+	# 	img = img.half() if args.half else img.float()  # uint8 to fp16/32
+	# 	img /= 255.0  # 0 - 255 to 0.0 - 1.0
+	# 	if img.ndimension() == 3:
+	# 		img = img.unsqueeze(0)
+	# 	# Inference
+	# 	t1 = time_synchronized()
+	from torchvision import transforms
+	processor = transforms.Compose([transforms.Resize(img_size),
+	                                 transforms.RandomHorizontalFlip(),
+	                                 transforms.ToTensor()
+	                                 ])
+	cap = VideoCapture(video_path)
+	while True:
+		frames = cap.read()
+		# image = Image.fromarray(frames)
+		# image = processor(image)
+		img = [letterbox(x, img_size, auto=True, stride=stride)[0] for x in [frames]]
 
-	dataset = LoadStreams(video_path, img_size=img_size, stride=stride)
-	for path, img, im0s, vid_cap in dataset:
+		# Stack
+		img = np.stack(img, 0)
+		# Convert
+		img = img[:, :, :, ::-1].transpose(0, 3, 1, 2)  # BGR to RGB, to bsx3x416x416
+		img = np.ascontiguousarray(img)
 		img = torch.from_numpy(img).to(device)
 		img = img.half() if args.half else img.float()  # uint8 to fp16/32
 		img /= 255.0  # 0 - 255 to 0.0 - 1.0
 		if img.ndimension() == 3:
 			img = img.unsqueeze(0)
-		# Inference
-		t1 = time_synchronized()
-		pred = model(img, augment=False)[0]
+		# print(image.size())
+		# break
+		tracking_faces = []
+		with torch.no_grad():
+			pred = model(img, augment=False)[0]
 		# Apply NMS
 		pred = non_max_suppression(pred, args.person_score, args.iou, classes=0, agnostic=False)
-		t2 = time_synchronized()
-		iswebcam = args.video.isnumeric() or args.video.endswith('.txt') or args.video.lower().startswith(
-			('rtsp://', 'rtmp://', 'http://'))
+		# t2 = time_synchronized()
+		# iswebcam = args.video.isnumeric() or args.video.endswith('.txt') or args.video.lower().startswith(
+		# 	('rtsp://', 'rtmp://', 'http://'))
 		tracking_people = []
-		# Process detections
+		# # Process detections
 		for i, det in enumerate(pred):  # detections per image
-			if iswebcam:  # batch_size >= 1
-				p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
-			else:
-				p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
-			p = Path(p)  # to Path
-			save_path = str(save_dir / p.name)  # img.jpg
-			txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
-			s += '%gx%g ' % img.shape[2:]  # print string
-			gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-			if len(det):
-				# Rescale boxes from img_size to im0 size
-				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
-				# Print results
-				for c in det[:, -1].unique():
-					n = (det[:, -1] == c).sum()  # detections per class
-					s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-				# Write resultsqq
-				for *xyxy, conf, cls in reversed(det):
-					if names[int(cls)] == 'person':
-						#### tracking people in curent frame
-						(x1, y1, x2, y2) = (int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3]))
-						tracking_people.append([x1, y1, x2, y2])
-						if args.save_txt:  # Write to file
-							xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
-							line = (cls, *xywh, conf) if args.save_conf else (cls, *xywh)  # label format
-							with open(txt_path + '.txt', 'a') as f:
-								f.write(('%g ' * len(line)).rstrip() % line + '\n')
-						if args.save_img or args.view_img:  # Add bbox to image
-							label = f'{names[int(cls)]} {conf:.2f}'
-							plot_one_box(xyxy, im0, label=label, color=colors[int(cls)], line_thickness=3)
+
+			# if iswebcam:  # batch_size >= 1
+			# 	p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
+			# else:
+			# 	p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
+			# p = Path(p)  # to Path
+			# save_path = str(save_dir / p.name)  # img.jpg
+			# txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
+			# s += '%gx%g ' % img.shape[2:]  # print string
+			# gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
+			# if len(det):
+			# 	# Rescale boxes from img_size to im0 size
+			# 	det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
+			# 	# Print results
+			# 	for c in det[:, -1].unique():
+			# 		n = (det[:, -1] == c).sum()  # detections per class
+			# 		s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
+			# 	# Write resultsqq
+			for *xyxy, conf, cls in reversed(det):
+				if names[int(cls)] == 'person':
+					#### tracking people in curent frame
+					(x1, y1, x2, y2) = (int(xyxy[0])*2, int(xyxy[1])*2, int(xyxy[2])*2, int(xyxy[3])*2)
+					tracking_people.append([x1, y1, x2, y2])
+					if args.save_img or args.view_img:  # Add bbox to image
+						label = f'{names[int(cls)]} {conf:.2f}'
+						cv2.rectangle(frames, (x1, y1), (x2, y2), (255, 255, 0), 2)
 			### update tracking objects
 			objects = tracker.update(tracking_people)
 			### object ids in current frame (reset each frame)
@@ -491,14 +512,14 @@ def detect_out(model, args):
 				# print(f'\n===============================')
 				# print(text)
 				# print(f'===============================\n')
-				cv2.putText(img=im0,
+				cv2.putText(img=frames,
 							text=text,
 							org=(centroid[0] - 10, centroid[1] - 10),
 							fontFace=cv2.FONT_HERSHEY_SIMPLEX,
 							fontScale=0.55,
 							color=(0, 255, 0),
 							thickness=2)
-				cv2.circle(img=im0,
+				cv2.circle(img=frames,
 						   center=(centroid[0], centroid[1]),
 						   radius=4,
 						   color=(0, 255, 0),
@@ -530,27 +551,24 @@ def detect_out(model, args):
 			# print(f'{s}Done. ({t2 - t1:.3f}s)')
 			# Stream results
 			if args.view_img:
-				cv2.imshow(str(p), im0)
-				if cv2.waitKey(1) & 0xFF == ord('q'):
-					break
+				cv2.imshow('detecting out', frames)
 			# Save results (image with detections)
-			if args.save_img:
-				if dataset.mode == 'image':
-					cv2.imwrite(save_path, im0)
-				else:  # 'video'
-					if vid_path != save_path:  # new video
-						vid_path = save_path
-						if isinstance(vid_writer, cv2.VideoWriter):
-							vid_writer.release()  # release previous video writer
+			# if args.save_img:
+			# 	if dataset.mode == 'image':
+			# 		cv2.imwrite(save_path, im0)
+			# 	else:  # 'video'
+			# 		if vid_path != save_path:  # new video
+			# 			vid_path = save_path
+			# 			if isinstance(vid_writer, cv2.VideoWriter):
+			# 				vid_writer.release()  # release previous video writer
+			#
+			# 			fourcc = 'mp4v'  # output video codec
+			# 			fps = vid_cap.get(cv2.CAP_PROP_FPS)
+			# 			w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+			# 			h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+			# 			vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+			# 		vid_writer.write(im0)
 
-						fourcc = 'mp4v'  # output video codec
-						fps = vid_cap.get(cv2.CAP_PROP_FPS)
-						w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-						h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-						vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
-					vid_writer.write(im0)
-			if cv2.waitKey(1) & 0xFF == ord('q'):
-				break
 		if cv2.waitKey(1) & 0xFF == ord('q'):
 			break
 	cv2.destroyAllWindows()
@@ -577,130 +595,123 @@ def detect_in(model, age_gender_model, args):
 	save_dir = Path(increment_path(Path('outputs') / 'results', exist_ok=True))  # increment run
 	(save_dir / 'labels' if args.save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 	# Set Dataloader
-	tracker = CentroidTracker()
+	tracker = CentroidTracker(maxDisappeared=60)
 	saved_object_ids = []
 	face_objs = []
-	dataset = LoadStreams(video_path)
+	# dataset = LoadStreams(video_path)
+	cap = VideoCapture(video_path)
 	expand_ratio = 0.0
-	for path, img, img0, vid_cap in dataset:
-		frames = img0[0]
-		image = Image.fromarray(frames)
-		with torch.no_grad():
-			image, faces = model.detect_image(image)
-		gender = 'unknown'
-		age = 'unknown'
-		tracking_faces = []
 
-		for i, (x1, y1, x2, y2) in enumerate(
-				faces):  ## with yolo, result will be 2 point of rectangle corner (x1, y1) and (x2, y2)
-			try:
-				(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
-				tracking_faces.append([y1, x1, y2, x2])
+	while True:
+		frames = cap.read()
+		if frames is not None:
+			image = Image.fromarray(frames)
+			with torch.no_grad():
+				image, faces = model.detect_image(image)
+			tracking_faces = []
 
-				x1 = max(x1 - (expand_ratio * (x2 - x1)), 0)
-				x2 = min(x2 + (expand_ratio * (x2 - x1)), frames.shape[0])
-				y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
-				y2 = min(y2 + (expand_ratio * (y2 - y1)), frames.shape[1])
-				(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
-
-				### extract the face
-				face_img = frames[x1: x2, y1:y2].copy()
-				cv2.rectangle(frames, (y1, x1), (y2, x2), (255, 0, 0), 2)
-				# Predict Gender and Age
-				with torch.no_grad():
-					#### preparing face vector before passing to age, gender estimating model
-					vectors = image_loader_(face_img)
-					# age_gender_output = age_gender_model(vectors)
-					pred_gender = gender_model(vectors)
-					pred_age = age_model(vectors)
-					## convert predicted index to meaningful label
-					gender_indicate = pred_gender.argmax(dim=1).item()
-					age_indicate = round(float(pred_age))
-					gender = gender_choice.get(gender_indicate)
-					age = age_choice.get(age_indicate)
-			except Exception as e:
-				print(f'run_yolo_new.py line 510. Error {e}')
-				continue
-		objects = tracker.update(tracking_faces)
-		# print(f'current_object_ids {current_object_ids}')
-		# print(f'objects {objects.items()}')
-		### current frame object ids (reset each frame)
-		current_object_ids = set()
-		for (object_id, centroid) in objects.items():
-			current_object_ids.add(object_id)
-			if object_id not in saved_object_ids:
-				if gender != 'unknown' and age != 'unknown':
-					# print(f'there are new object: {object_id}')
-					## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
-					new_face = Face(id_=object_id, gender=[gender], age=[age], first_centroid=centroid)
-					face_objs.append(new_face)
-					saved_object_ids.append(object_id)
-
-			else:
-				if gender != 'unknown' and age != 'unknown':
-					# print(f'object_id {object_id}')
-					# print(f'saved_object_ids {saved_object_ids}')
-					### when the face object is already in the managing face_objects, update it's info
-					### get and edit
-					old_face = face_objs[saved_object_ids.index(object_id)]
-					old_face.gender = old_face.gender + [gender]
-					old_face.age = old_face.age + [age]
-					old_face.last_centroid = centroid
-					### update
-					face_objs[saved_object_ids.index(object_id)] = old_face
-			#### draw rectangle bounding box for each face
-			text = f"ID:{object_id}"
-			# print(f'\n===============================')q
-			# if gender != 'unknown' and age != 'unknown': print(f"ID:{object_id}--gender {gender}--age {age}")
-			# print(f'===============================\n')
-			cv2.putText(img=frames,
-			            text=text,
-			            org=(centroid[0] - 10, centroid[1] - 10),
-			            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-			            fontScale=0.55,
-			            color=(0, 255, 0),
-			            thickness=2)
-			cv2.circle(img=frames,
-			           center=(centroid[0], centroid[1]),
-			           radius=4,
-			           color=(0, 255, 0),
-			           thickness=1)
-		# print(f'len(face_objs): {len(face_objs)}')
-		# print(f'current_object_ids: {current_object_ids}')
-		for obj in face_objs:
-			if obj.id not in current_object_ids:  ### face disappeared
-				gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
-				age = max(set(obj.age), key=obj.age.count)
+			for i, (x1, y1, x2, y2) in enumerate(faces):  ## with yolo, result will be 2 point of rectangle corner (x1, y1) and (x2, y2)
 				try:
-					going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
+					(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
+					tracking_faces.append([y1, x1, y2, x2])
 
-					### remove disappeared object from face_objs and saved face_id
-					face_objs.remove(obj)
-					saved_object_ids.remove(obj.id)
-					# print(f'id: {obj.id}')
-					# print(f'gender: {gender}')
-					# print(f'age: {age}')
-					# print(f'going_in: {going_in}')
-					# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
-					# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-					if going_in:
-						print(f'Someone is going in')
-						send(obj.id, gender, age, going_in)
+					x1 = max(x1 - (expand_ratio * (x2 - x1)), 0)
+					x2 = min(x2 + (expand_ratio * (x2 - x1)), frames.shape[0])
+					y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
+					y2 = min(y2 + (expand_ratio * (y2 - y1)), frames.shape[1])
+					(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
+
+					### extract the face
+					face_img = frames[x1: x2, y1:y2].copy()
+					cv2.rectangle(frames, (y1, x1), (y2, x2), (255, 0, 0), 2)
+					# Predict Gender and Age
+					with torch.no_grad():
+						#### preparing face vector before passing to age, gender estimating model
+						vectors = image_loader_(face_img)
+						# age_gender_output = age_gender_model(vectors)
+						pred_gender = gender_model(vectors)
+						pred_age = age_model(vectors)
+						## convert predicted index to meaningful label
+						gender_indicate = pred_gender.argmax(dim=1).item()
+						age_indicate = round(float(pred_age))
+						gender = gender_choice.get(gender_indicate)
+						age = age_choice.get(age_indicate)
 				except Exception as e:
-					face_objs.remove(obj)
-					saved_object_ids.remove(obj.id)
+					print(f'run_yolo_new.py line 510. Error {e}')
 					continue
-		if args.view_img:
-			cv2.imshow('view', frames)
-			if cv2.waitKey(1) & 0xFF == ord('q'):
-				break
+			objects = tracker.update(tracking_faces)
+			current_object_ids = set()
+			for (object_id, centroid) in objects.items():
+				current_object_ids.add(object_id)
+				if object_id not in saved_object_ids:
+					if gender != 'unknown' and age != 'unknown':
+						# print(f'there are new object: {object_id}')
+						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
+						new_face = Face(id_=object_id, gender=[gender], age=[age], first_centroid=centroid)
+						face_objs.append(new_face)
+						saved_object_ids.append(object_id)
 
+				else:
+					if gender != 'unknown' and age != 'unknown':
+						# print(f'object_id {object_id}')
+						# print(f'saved_object_ids {saved_object_ids}')
+						### when the face object is already in the managing face_objects, update it's info
+						### get and edit
+						old_face = face_objs[saved_object_ids.index(object_id)]
+						old_face.gender = old_face.gender + [gender]
+						old_face.age = old_face.age + [age]
+						old_face.last_centroid = centroid
+						### update
+						face_objs[saved_object_ids.index(object_id)] = old_face
+				#### draw rectangle bounding box for each face
+				text = f"ID:{object_id}"
+				# print(f'\n===============================')q
+				# if gender != 'unknown' and age != 'unknown': print(f"ID:{object_id}--gender {gender}--age {age}")
+				# print(f'===============================\n')
+				cv2.putText(img=frames,
+				            text=text,
+				            org=(centroid[0] - 10, centroid[1] - 10),
+				            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+				            fontScale=0.55,
+				            color=(0, 255, 0),
+				            thickness=2)
+				cv2.circle(img=frames,
+				           center=(centroid[0], centroid[1]),
+				           radius=4,
+				           color=(0, 255, 0),
+				           thickness=1)
+			# print(f'len(face_objs): {len(face_objs)}')
+			# print(f'current_object_ids: {current_object_ids}')
+			for obj in face_objs:
+				if obj.id not in current_object_ids:  ### face disappeared
+					gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
+					age = max(set(obj.age), key=obj.age.count)
+					try:
+						going_in = True if obj.first_centroid[-1] > obj.last_centroid[-1] else False
 
+						### remove disappeared object from face_objs and saved face_id
+						face_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						# print(f'id: {obj.id}')
+						# print(f'gender: {gender}')
+						# print(f'age: {age}')
+						# print(f'going_in: {going_in}')
+						# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+						# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+						if going_in:
+							print(f'Someone is going in')
+							send(obj.id, gender, age, going_in)
+					except Exception as e:
+						face_objs.remove(obj)
+						saved_object_ids.remove(obj.id)
+						continue
+			if args.view_img:
+				cv2.imshow('view', frames)
+				if cv2.waitKey(1) & 0xFF == ord('q'):
+					break
+		else:
+			cap=VideoCapture(video_path)
 	cv2.destroyAllWindows()
-	# if save_output:
-	# 	out_stream_writer.release()
-
-
 #####################################################################
 def get_args():
 	parser = argparse.ArgumentParser()
@@ -719,7 +730,7 @@ def get_args():
 	parser.add_argument('--save-img', action='store_true', help='save results , boolean type')
 	parser.add_argument('--save-txt', action='store_true', help='save results to *.txt , boolean type')
 	parser.add_argument('--half', action='store_true', help='running with half precision, boolean type')
-	parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+	parser.add_argument('--device', default=0, help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
 	args = parser.parse_args()
 	return args
 
@@ -729,13 +740,17 @@ if __name__ == "__main__":
 	args = get_args()
 	### load models
 	yolov3 = YOLO(args)
+
+	if isinstance(args.device, list):
+		device = torch.device(f'cuda:{int(id_)}' for id_ in args.device)
+	elif isinstance(args.device, int):
+		device = torch.device(f'cuda:{int(args.device)}')
+	else:
+		device = torch.device('cpu')
 	yolov5 = attempt_load(args.weights, map_location=device)
 	age_gender_model = get_model()
-
 	# detect_img(yolov3, r'G:\locs_projects\on_working\images\test_images', age_gender_model)
 	# detect_img(yolov3, r'val_images', age_gender_model)
-
-
 	## run 2 models on separate threads
 	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
 	run_out = threading.Thread(target=detect_out, args=(yolov5, args))

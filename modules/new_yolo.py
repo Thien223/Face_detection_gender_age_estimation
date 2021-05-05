@@ -12,8 +12,11 @@ os.environ['KERAS_BACKEND'] = 'tensorflow'
 import queue
 import numpy as np
 from PIL import ImageDraw, Image
-import tensorflow.python.keras.backend as K  ### use for new tensorflow version
 import tensorflow as tf
+config = tf.compat.v1.ConfigProto(device_count = {'GPU': 2} )
+sess = tf.compat.v1.Session(config=config)
+import tensorflow.python.keras.backend as K  ### use for new tensorflow version
+K.set_session(sess)
 from models.common import Conv
 from cv2 import cv2
 
