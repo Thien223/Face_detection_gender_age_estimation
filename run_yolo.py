@@ -433,144 +433,126 @@ def detect_out(model, args):
 	cap = VideoCapture(video_path)
 	while True:
 		frames = cap.read()
-		# image = Image.fromarray(frames)
-		# image = processor(image)
-		img = [letterbox(x, img_size, auto=True, stride=stride)[0] for x in [frames]]
+		# ## for testing: set frames to None and check what will happen
+		# if int(time.time()) % 99 == 0:
+		# 	print('setting frames to None')
+		# 	frames = None
+		if frames is None or cap is None:
+			cap = VideoCapture(video_path)
+			print(f'recreated video capture')
+			continue
+		else:
+			print(f'processing images - out')
 
-		# Stack
-		img = np.stack(img, 0)
-		# Convert
-		img = img[:, :, :, ::-1].transpose(0, 3, 1, 2)  # BGR to RGB, to bsx3x416x416
-		img = np.ascontiguousarray(img)
-		img = torch.from_numpy(img).to(device)
-		img = img.half() if args.half else img.float()  # uint8 to fp16/32
-		img /= 255.0  # 0 - 255 to 0.0 - 1.0
-		if img.ndimension() == 3:
-			img = img.unsqueeze(0)
-		# print(image.size())
-		# break
-		tracking_faces = []
-		with torch.no_grad():
-			pred = model(img, augment=False)[0]
-		# Apply NMS
-		pred = non_max_suppression(pred, args.person_score, args.iou, classes=0, agnostic=False)
-		# t2 = time_synchronized()
-		# iswebcam = args.video.isnumeric() or args.video.endswith('.txt') or args.video.lower().startswith(
-		# 	('rtsp://', 'rtmp://', 'http://'))
-		tracking_people = []
-		# # Process detections
-		for i, det in enumerate(pred):  # detections per image
+			img = [letterbox(x, img_size, auto=True, stride=stride)[0] for x in [frames]]
+			# Stack
+			img = np.stack(img, 0)
+			# Convert
+			img = img[:, :, :, ::-1].transpose(0, 3, 1, 2)  # BGR to RGB, to bsx3x416x416
+			img = np.ascontiguousarray(img)
+			img = torch.from_numpy(img).to(device)
+			img = img.half() if args.half else img.float()  # uint8 to fp16/32
+			img /= 255.0  # 0 - 255 to 0.0 - 1.0
+			if img.ndimension() == 3:
+				img = img.unsqueeze(0)
+			with torch.no_grad():
+				pred = model(img, augment=False)[0]
+			# Apply NMS
+			pred = non_max_suppression(pred, args.person_score, args.iou, classes=0, agnostic=False)
+			tracking_people = []
+			# # Process detections
+			for i, det in enumerate(pred):  # detections per image
+				# 	# Write resultsqq
+				for *xyxy, conf, cls in reversed(det):
+					if names[int(cls)] == 'person':
+						#### tracking people in curent frame
+						(x1, y1, x2, y2) = (int(xyxy[0])*2, int(xyxy[1])*2, int(xyxy[2])*2, int(xyxy[3])*2)
+						tracking_people.append([x1, y1, x2, y2])
+						if args.save_img or args.view_img:  # Add bbox to image
+							label = f'{names[int(cls)]} {conf:.2f}'
+							cv2.rectangle(frames, (x1, y1), (x2, y2), (255, 255, 0), 2)
+				### update tracking objects
+				objects = tracker.update(tracking_people)
+				### object ids in current frame (reset each frame)
+				current_object_ids = set()
+				for (object_id, centroid) in objects.items():
+					current_object_ids.add(object_id)
+					if object_id not in saved_object_ids:
+						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
+						new_person = Person(id_=object_id, first_centroid=centroid)
+						person_objs.append(new_person)
+						saved_object_ids.append(object_id)
+					else:
+						### when the face object is already in the managing face_objects, update it's info
+						### get and edit
+						old_person = person_objs[saved_object_ids.index(object_id)]
+						old_person.last_centroid = centroid
+						### update
+						person_objs[saved_object_ids.index(object_id)] = old_person
+					#### draw rectangle bounding box for each face
+					text = f"ID:{object_id}"
+					# print(f'\n===============================')
+					# print(text)
+					# print(f'===============================\n')
+					cv2.putText(img=frames,
+								text=text,
+								org=(centroid[0] - 10, centroid[1] - 10),
+								fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+								fontScale=0.55,
+								color=(0, 255, 0),
+								thickness=2)
+					cv2.circle(img=frames,
+							   center=(centroid[0], centroid[1]),
+							   radius=4,
+							   color=(0, 255, 0),
+							   thickness=1)
+				for obj in person_objs:
+					if obj.id not in current_object_ids:  ### face disappeared
+						### human recognition model does not have gender and age info
+						gender = 'unknown'
+						age = -1
+						try:
+							going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+							### remove disappeared object from face_objs and saved face_id
+							person_objs.remove(obj)
+							saved_object_ids.remove(obj.id)
+							# print(f'id: {obj.id}')
+							# print(f'gender: {gender}')
+							# print(f'age: {age}')
+							# print(f'going_in: {going_in}')
+							# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+							# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+							if not going_in:
+								print(f'Someone is going out')
+								send(obj.id, gender, age, going_in)
+						except Exception as e:
+							person_objs.remove(obj)
+							saved_object_ids.remove(obj.id)
+							continue
+				# Print time (inference + NMS)
+				# print(f'{s}Done. ({t2 - t1:.3f}s)')
+				# Stream results
+				if args.view_img:
+					cv2.imshow('detecting out', frames)
+				# Save results (image with detections)
+				# if args.save_img:
+				# 	if dataset.mode == 'image':
+				# 		cv2.imwrite(save_path, im0)
+				# 	else:  # 'video'
+				# 		if vid_path != save_path:  # new video
+				# 			vid_path = save_path
+				# 			if isinstance(vid_writer, cv2.VideoWriter):
+				# 				vid_writer.release()  # release previous video writer
+				#
+				# 			fourcc = 'mp4v'  # output video codec
+				# 			fps = vid_cap.get(cv2.CAP_PROP_FPS)
+				# 			w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+				# 			h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+				# 			vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+				# 		vid_writer.write(im0)
 
-			# if iswebcam:  # batch_size >= 1
-			# 	p, s, im0, frame = path[i], '%g: ' % i, im0s[i].copy(), dataset.count
-			# else:
-			# 	p, s, im0, frame = path, '', im0s, getattr(dataset, 'frame', 0)
-			# p = Path(p)  # to Path
-			# save_path = str(save_dir / p.name)  # img.jpg
-			# txt_path = str(save_dir / 'labels' / p.stem) + ('' if dataset.mode == 'image' else f'_{frame}')  # img.txt
-			# s += '%gx%g ' % img.shape[2:]  # print string
-			# gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
-			# if len(det):
-			# 	# Rescale boxes from img_size to im0 size
-			# 	det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
-			# 	# Print results
-			# 	for c in det[:, -1].unique():
-			# 		n = (det[:, -1] == c).sum()  # detections per class
-			# 		s += f"{n} {names[int(c)]}{'s' * (n > 1)}, "  # add to string
-			# 	# Write resultsqq
-			for *xyxy, conf, cls in reversed(det):
-				if names[int(cls)] == 'person':
-					#### tracking people in curent frame
-					(x1, y1, x2, y2) = (int(xyxy[0])*2, int(xyxy[1])*2, int(xyxy[2])*2, int(xyxy[3])*2)
-					tracking_people.append([x1, y1, x2, y2])
-					if args.save_img or args.view_img:  # Add bbox to image
-						label = f'{names[int(cls)]} {conf:.2f}'
-						cv2.rectangle(frames, (x1, y1), (x2, y2), (255, 255, 0), 2)
-			### update tracking objects
-			objects = tracker.update(tracking_people)
-			### object ids in current frame (reset each frame)
-			current_object_ids = set()
-
-			for (object_id, centroid) in objects.items():
-				current_object_ids.add(object_id)
-				if object_id not in saved_object_ids:
-					## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
-					new_person = Person(id_=object_id, first_centroid=centroid)
-					person_objs.append(new_person)
-					saved_object_ids.append(object_id)
-				else:
-					# print(f'object_id {object_id}')
-					# print(f'saved_object_ids {saved_object_ids}')
-					### when the face object is already in the managing face_objects, update it's info
-					### get and edit
-					old_person = person_objs[saved_object_ids.index(object_id)]
-					old_person.last_centroid = centroid
-					### update
-					person_objs[saved_object_ids.index(object_id)] = old_person
-				#### draw rectangle bounding box for each face
-				text = f"ID:{object_id}"
-				# print(f'\n===============================')
-				# print(text)
-				# print(f'===============================\n')
-				cv2.putText(img=frames,
-							text=text,
-							org=(centroid[0] - 10, centroid[1] - 10),
-							fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-							fontScale=0.55,
-							color=(0, 255, 0),
-							thickness=2)
-				cv2.circle(img=frames,
-						   center=(centroid[0], centroid[1]),
-						   radius=4,
-						   color=(0, 255, 0),
-						   thickness=1)
-			for obj in person_objs:
-				if obj.id not in current_object_ids:  ### face disappeared
-					### human recognition model does not have gender and age info
-					gender = 'unknown'
-					age = -1
-					try:
-						going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
-						### remove disappeared object from face_objs and saved face_id
-						person_objs.remove(obj)
-						saved_object_ids.remove(obj.id)
-						# print(f'id: {obj.id}')
-						# print(f'gender: {gender}')
-						# print(f'age: {age}')
-						# print(f'going_in: {going_in}')
-						# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
-						# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-						if not going_in:
-							print(f'Someone is going out')
-							send(obj.id, gender, age, going_in)
-					except Exception as e:
-						person_objs.remove(obj)
-						saved_object_ids.remove(obj.id)
-						continue
-			# Print time (inference + NMS)
-			# print(f'{s}Done. ({t2 - t1:.3f}s)')
-			# Stream results
-			if args.view_img:
-				cv2.imshow('detecting out', frames)
-			# Save results (image with detections)
-			# if args.save_img:
-			# 	if dataset.mode == 'image':
-			# 		cv2.imwrite(save_path, im0)
-			# 	else:  # 'video'
-			# 		if vid_path != save_path:  # new video
-			# 			vid_path = save_path
-			# 			if isinstance(vid_writer, cv2.VideoWriter):
-			# 				vid_writer.release()  # release previous video writer
-			#
-			# 			fourcc = 'mp4v'  # output video codec
-			# 			fps = vid_cap.get(cv2.CAP_PROP_FPS)
-			# 			w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-			# 			h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-			# 			vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
-			# 		vid_writer.write(im0)
-
-		if cv2.waitKey(1) & 0xFF == ord('q'):
-			break
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
 	cv2.destroyAllWindows()
 
 
@@ -604,7 +586,16 @@ def detect_in(model, age_gender_model, args):
 
 	while True:
 		frames = cap.read()
-		if frames is not None:
+		# ## for testing: set frames to None and check what will happen
+		# if int(time.time()) % 99 == 0:
+		# 	print('setting frames to None')
+		# 	frames = None
+		if frames is None or cap is None:
+			cap = VideoCapture(video_path)
+			print(f'recreated video capture')
+			continue
+		else:
+			print(f'processing images - in')
 			image = Image.fromarray(frames)
 			with torch.no_grad():
 				image, faces = model.detect_image(image)
@@ -709,8 +700,6 @@ def detect_in(model, age_gender_model, args):
 				cv2.imshow('view', frames)
 				if cv2.waitKey(1) & 0xFF == ord('q'):
 					break
-		else:
-			cap=VideoCapture(video_path)
 	cv2.destroyAllWindows()
 #####################################################################
 def get_args():
