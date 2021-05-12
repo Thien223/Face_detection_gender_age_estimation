@@ -37,214 +37,214 @@ age_choice = {0: '10', 1: '20', 2: '30', 3: '40', 4: '50'}
 
 # age_choice = {1: '<10', 2: '11~20', 3: '21~30', 4: '31~40', 5: '41~50', 6: '51~60', 7: '61~70', 8: '71~80', 9: '81~90', 10: '>90'}
 
-
-def detect_img(model, image_path, age_gender_model=None):
-	max_ = 20000
-	f_count = 0
-	m_count = 0
-	male_count = {}
-	female_count = {}
-	male_true = 0
-	male_false = 0
-	female_true = 0
-	female_false = 0
-
-	age_true = {}
-	age_false = {}
-
-	# temp = '00866A15'
-
-	### for tarbal test set
-	################################
-	# image_path = 'dataset/train_image_unbalanced'
-	# with open(os.path.join(image_path, 'metadata.json'), 'r') as tarbal:
-	#     paths = json.load(tarbal)
-	# random.shuffle(paths)
-	# for dict_ in paths:
-	#     full_path = dict_['image']
-	#     age = dict_['age']
-	#     gender = 1 if dict_['gender'] == 'male' else 0
-	#     if m_count >= 4500: break
-	####################################################
-
-	####################################################
-	# for all_face dataset
-	files = os.listdir(image_path)
-	random.shuffle(files)
-	for file in files:
-		full_path = os.path.join(image_path, file)
-		# print(full_path)
-		if not (file.endswith('.png') or file.endswith('.jpg')):
-			continue
-		temp = file.replace('.png', '').replace('.jpg', '').replace('-with-mask', '')
-		# prefix, age = temp.split('_')[-2:]
-		prefix, age = temp.split('A')
-		# _, age, gender, filename = full_path.split('\\')
-		# gender = "male" if gender == "111" else "female"
-		gender = 1 if int(prefix) >= 8147 else 0  ### 1 is male, 0 is female
-		####################################################
-		# gender = int(prefix)
-		age = int(age)
-		age_ = _age_categorization(age)
-
-		if gender == 1:
-			if f_count >= m_count:
-				m_count += 1
-				if age in male_count.keys():
-					if male_count[age] < max_:
-						try:
-							pred_gender, pred_age = detect(model=model, file_path=full_path,
-														   age_gender_model=age_gender_model)
-							pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
-							print(f'pred_age {pred_age} -- real: {age_}')
-							if pred_gender == gender:
-								male_true += 1
-							elif pred_gender is None:
-								continue
-							else:
-								male_false += 1
-							if (age_ - 0.5) < pred_age <= age_ + 0.5:
-								if age_ in age_true.keys():
-									age_true[age_] += 1
-								else:
-									age_true[age_] = 1
-							elif pred_age is None:
-								continue
-							else:
-								if age_ in age_false.keys():
-									if pred_age in age_false[age_].keys():
-										age_false[age_][pred_age] += 1
-									else:
-										age_false[age_][pred_age] = 1
-								else:
-									age_false[age_] = {}
-									age_false[age_][pred_age] = 1
-
-							male_count[age] += 1
-						except Exception as e:
-							print(f'Run_yolo 201 error: {e}')
-							continue
-					else:
-						continue
-				else:
-					try:
-						pred_gender, pred_age = detect(model=model, file_path=full_path,
-													   age_gender_model=age_gender_model)
-						pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
-						print(f'pred_age {pred_age} -- real: {age_}')
-						if pred_gender == gender:
-							male_true += 1
-						elif pred_gender is None:
-							continue
-						else:
-							male_false += 1
-						if (age_ - 0.5) < pred_age <= age_ + 0.5:
-							if age_ in age_true.keys():
-								age_true[age_] += 1
-							else:
-								age_true[age_] = 1
-						elif pred_age is None:
-							continue
-						else:
-							if age_ in age_false.keys():
-								if pred_age in age_false[age_].keys():
-									age_false[age_][pred_age] += 1
-								else:
-									age_false[age_][pred_age] = 1
-							else:
-								age_false[age_] = {}
-								age_false[age_][pred_age] = 1
-						male_count[age] = 1
-					except Exception as e:
-						print(f'Run_yolo 235 error: {e}')
-						continue
-		else:
-			f_count += 1
-			if age in female_count.keys():
-				if female_count[age] < max_:
-					try:
-						pred_gender, pred_age = detect(model=model, file_path=full_path,
-													   age_gender_model=age_gender_model)
-						pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
-						print(f'pred_age {pred_age} -- real: {age_}')
-						if pred_gender == gender:
-							female_true += 1
-						elif pred_gender is None:
-							continue
-						else:
-							female_false += 1
-						if (age_ - 0.5) < pred_age <= age_ + 0.5:
-							if age_ in age_true.keys():
-								age_true[age_] += 1
-							else:
-								age_true[age_] = 1
-						elif pred_age is None:
-							continue
-						else:
-							if age_ in age_false.keys():
-								if pred_age in age_false[age_].keys():
-									age_false[age_][pred_age] += 1
-								else:
-									age_false[age_][pred_age] = 1
-							else:
-								age_false[age_] = {}
-								age_false[age_][pred_age] = 1
-						female_count[age] += 1
-					except Exception as e:
-						print(f'Run_yolo 273 error: {e}')
-						continue
-				else:
-					continue
-			else:
-				try:
-					pred_gender, pred_age = detect(model=model, file_path=full_path, age_gender_model=age_gender_model)
-					pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
-					print(f'pred_age {pred_age} -- real: {age_}')
-					if pred_gender == gender:
-						female_true += 1
-					elif pred_gender is None:
-						continue
-					else:
-						female_false += 1
-					if (age_ - 0.5) < pred_age <= age_ + 0.5:
-						if age_ in age_true.keys():
-							age_true[age_] += 1
-						else:
-							age_true[age_] = 1
-					elif pred_age is None:
-						continue
-					else:
-						if age_ in age_false.keys():
-							if pred_age in age_false[age_].keys():
-								age_false[age_][pred_age] += 1
-							else:
-								age_false[age_][pred_age] = 1
-						else:
-							age_false[age_] = {}
-							age_false[age_][pred_age] = 1
-					female_count[age] = 1
-				except Exception as e:
-					print(f'Run_yolo 306 error: {e}')
-					continue
-	print(f'male_true {male_true}')
-	print(f'male_false {male_false}')
-	print(f'female_true {female_true}')
-	print(f'female_false {female_false}\n\n')
-	age_true_count = 0
-	age_false_count = 0
-	for key in age_true.keys():
-		age_true_count += int(age_true[key])
-	for _age in [0, 1, 2, 3, 4]:
-		if _age in age_false.keys():
-			for key in age_false[_age].keys():
-				age_false_count += int(age_false[_age][key])
-	print(f'age_true {age_true}')
-	print(f'age_false {age_false}\n\n')
-	print(f'age_true_count {age_true_count}')
-	print(f'age_false_count {age_false_count}\n\n')
-	print(f'male_count {male_count}')
-	print(f'female_count {female_count}\n\n')
-	model.close_session()
+#
+# def detect_img(model, image_path, age_gender_model=None):
+# 	max_ = 20000
+# 	f_count = 0
+# 	m_count = 0
+# 	male_count = {}
+# 	female_count = {}
+# 	male_true = 0
+# 	male_false = 0
+# 	female_true = 0
+# 	female_false = 0
+#
+# 	age_true = {}
+# 	age_false = {}
+#
+# 	# temp = '00866A15'
+#
+# 	### for tarbal test set
+# 	################################
+# 	# image_path = 'dataset/train_image_unbalanced'
+# 	# with open(os.path.join(image_path, 'metadata.json'), 'r') as tarbal:
+# 	#     paths = json.load(tarbal)
+# 	# random.shuffle(paths)
+# 	# for dict_ in paths:
+# 	#     full_path = dict_['image']
+# 	#     age = dict_['age']
+# 	#     gender = 1 if dict_['gender'] == 'male' else 0
+# 	#     if m_count >= 4500: break
+# 	####################################################
+#
+# 	####################################################
+# 	# for all_face dataset
+# 	files = os.listdir(image_path)
+# 	random.shuffle(files)
+# 	for file in files:
+# 		full_path = os.path.join(image_path, file)
+# 		# print(full_path)
+# 		if not (file.endswith('.png') or file.endswith('.jpg')):
+# 			continue
+# 		temp = file.replace('.png', '').replace('.jpg', '').replace('-with-mask', '')
+# 		# prefix, age = temp.split('_')[-2:]
+# 		prefix, age = temp.split('A')
+# 		# _, age, gender, filename = full_path.split('\\')
+# 		# gender = "male" if gender == "111" else "female"
+# 		gender = 1 if int(prefix) >= 8147 else 0  ### 1 is male, 0 is female
+# 		####################################################
+# 		# gender = int(prefix)
+# 		age = int(age)
+# 		age_ = _age_categorization(age)
+#
+# 		if gender == 1:
+# 			if f_count >= m_count:
+# 				m_count += 1
+# 				if age in male_count.keys():
+# 					if male_count[age] < max_:
+# 						try:
+# 							pred_gender, pred_age = detect(model=model, file_path=full_path,
+# 														   age_gender_model=age_gender_model)
+# 							pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
+# 							print(f'pred_age {pred_age} -- real: {age_}')
+# 							if pred_gender == gender:
+# 								male_true += 1
+# 							elif pred_gender is None:
+# 								continue
+# 							else:
+# 								male_false += 1
+# 							if (age_ - 0.5) < pred_age <= age_ + 0.5:
+# 								if age_ in age_true.keys():
+# 									age_true[age_] += 1
+# 								else:
+# 									age_true[age_] = 1
+# 							elif pred_age is None:
+# 								continue
+# 							else:
+# 								if age_ in age_false.keys():
+# 									if pred_age in age_false[age_].keys():
+# 										age_false[age_][pred_age] += 1
+# 									else:
+# 										age_false[age_][pred_age] = 1
+# 								else:
+# 									age_false[age_] = {}
+# 									age_false[age_][pred_age] = 1
+#
+# 							male_count[age] += 1
+# 						except Exception as e:
+# 							print(f'Run_yolo 201 error: {e}')
+# 							continue
+# 					else:
+# 						continue
+# 				else:
+# 					try:
+# 						pred_gender, pred_age = detect(model=model, file_path=full_path,
+# 													   age_gender_model=age_gender_model)
+# 						pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
+# 						print(f'pred_age {pred_age} -- real: {age_}')
+# 						if pred_gender == gender:
+# 							male_true += 1
+# 						elif pred_gender is None:
+# 							continue
+# 						else:
+# 							male_false += 1
+# 						if (age_ - 0.5) < pred_age <= age_ + 0.5:
+# 							if age_ in age_true.keys():
+# 								age_true[age_] += 1
+# 							else:
+# 								age_true[age_] = 1
+# 						elif pred_age is None:
+# 							continue
+# 						else:
+# 							if age_ in age_false.keys():
+# 								if pred_age in age_false[age_].keys():
+# 									age_false[age_][pred_age] += 1
+# 								else:
+# 									age_false[age_][pred_age] = 1
+# 							else:
+# 								age_false[age_] = {}
+# 								age_false[age_][pred_age] = 1
+# 						male_count[age] = 1
+# 					except Exception as e:
+# 						print(f'Run_yolo 235 error: {e}')
+# 						continue
+# 		else:
+# 			f_count += 1
+# 			if age in female_count.keys():
+# 				if female_count[age] < max_:
+# 					try:
+# 						pred_gender, pred_age = detect(model=model, file_path=full_path,
+# 													   age_gender_model=age_gender_model)
+# 						pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
+# 						print(f'pred_age {pred_age} -- real: {age_}')
+# 						if pred_gender == gender:
+# 							female_true += 1
+# 						elif pred_gender is None:
+# 							continue
+# 						else:
+# 							female_false += 1
+# 						if (age_ - 0.5) < pred_age <= age_ + 0.5:
+# 							if age_ in age_true.keys():
+# 								age_true[age_] += 1
+# 							else:
+# 								age_true[age_] = 1
+# 						elif pred_age is None:
+# 							continue
+# 						else:
+# 							if age_ in age_false.keys():
+# 								if pred_age in age_false[age_].keys():
+# 									age_false[age_][pred_age] += 1
+# 								else:
+# 									age_false[age_][pred_age] = 1
+# 							else:
+# 								age_false[age_] = {}
+# 								age_false[age_][pred_age] = 1
+# 						female_count[age] += 1
+# 					except Exception as e:
+# 						print(f'Run_yolo 273 error: {e}')
+# 						continue
+# 				else:
+# 					continue
+# 			else:
+# 				try:
+# 					pred_gender, pred_age = detect(model=model, file_path=full_path, age_gender_model=age_gender_model)
+# 					pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
+# 					print(f'pred_age {pred_age} -- real: {age_}')
+# 					if pred_gender == gender:
+# 						female_true += 1
+# 					elif pred_gender is None:
+# 						continue
+# 					else:
+# 						female_false += 1
+# 					if (age_ - 0.5) < pred_age <= age_ + 0.5:
+# 						if age_ in age_true.keys():
+# 							age_true[age_] += 1
+# 						else:
+# 							age_true[age_] = 1
+# 					elif pred_age is None:
+# 						continue
+# 					else:
+# 						if age_ in age_false.keys():
+# 							if pred_age in age_false[age_].keys():
+# 								age_false[age_][pred_age] += 1
+# 							else:
+# 								age_false[age_][pred_age] = 1
+# 						else:
+# 							age_false[age_] = {}
+# 							age_false[age_][pred_age] = 1
+# 					female_count[age] = 1
+# 				except Exception as e:
+# 					print(f'Run_yolo 306 error: {e}')
+# 					continue
+# 	print(f'male_true {male_true}')
+# 	print(f'male_false {male_false}')
+# 	print(f'female_true {female_true}')
+# 	print(f'female_false {female_false}\n\n')
+# 	age_true_count = 0
+# 	age_false_count = 0
+# 	for key in age_true.keys():
+# 		age_true_count += int(age_true[key])
+# 	for _age in [0, 1, 2, 3, 4]:
+# 		if _age in age_false.keys():
+# 			for key in age_false[_age].keys():
+# 				age_false_count += int(age_false[_age][key])
+# 	print(f'age_true {age_true}')
+# 	print(f'age_false {age_false}\n\n')
+# 	print(f'age_true_count {age_true_count}')
+# 	print(f'age_false_count {age_false_count}\n\n')
+# 	print(f'male_count {male_count}')
+# 	print(f'female_count {female_count}\n\n')
+# 	model.close_session()
 
 
 def image_loader_(face_img):
@@ -746,8 +746,8 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 				for obj in faces:
 					if obj.id not in current_object_ids:  ### face disappeared
 						### human recognition model does not have gender and age info
-						gender = 'unknown'
-						age = -1
+						gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
+						age = max(set(obj.age), key=obj.age.count)
 						try:
 							going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
 							### remove disappeared object from face_objs and saved face_id
@@ -759,8 +759,8 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 							# print(f'going_in: {going_in}')
 							# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
 							# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
-							if not going_in:
-								print(f'Someone is going out')
+							if going_in:
+								print(f'Someone is going in')
 								send(obj.id, gender, age, going_in)
 						except Exception as e:
 							faces.remove(obj)
@@ -841,7 +841,7 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 					cv2.imshow('view', im0s[0])
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
-		except NotImplementedError as e:
+		except Exception as e:
 			print(f'Run_yolo.py 693. Error: {e}')
 			continue
 	cv2.destroyAllWindows()
