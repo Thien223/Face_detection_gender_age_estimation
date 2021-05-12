@@ -292,7 +292,6 @@ def send(id, gender, age, going_in):
 		query=str_,
 		variables={}
 	)
-	print(data)
 	requests.post(URL, data=json.dumps(data), headers=headers)
 
 
@@ -703,7 +702,7 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 							age_indicate = round(float(pred_age))
 							gender = gender_choice.get(gender_indicate)
 							age = age_choice.get(age_indicate)
-							print(f"detected! {gender} -- {age} years old")
+							# print(f"detected! {gender} -- {age} years old")
 						if args.save_img or args.view_img:  # Add bbox to image
 							cv2.rectangle(im0s[0], (x1, y1), (x2, y2), (255, 0, 255), 2)
 
@@ -713,19 +712,24 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 				current_object_ids = set()
 				for (object_id, centroid) in face_objects.items():
 					current_object_ids.add(object_id)
-					if gender != 'unknown' and age != 'unknown':
-						# print(f'there are new object: {object_id}')
-						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
-						new_face = Face(id_=object_id, gender=[gender], age=[age], first_centroid=centroid)
-						faces.append(new_face)
-						saved_face_ids.append(object_id)
+					if object_id not in saved_face_ids:
+						if gender != 'unknown' and age != 'unknown':
+							# print(f'there are new object: {object_id}')
+							## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
+							new_face = Face(id_=object_id, gender=[gender], age=[age], first_centroid=centroid)
+							faces.append(new_face)
+							saved_face_ids.append(object_id)
+							# print(f'len(faces) {len(faces)}')
 					else:
-						### when the face object is already in the managing face_objects, update it's info
-						### get and edit
-						old_person = faces[saved_face_ids.index(object_id)]
-						old_person.last_centroid = centroid
-						### update
-						faces[saved_face_ids.index(object_id)] = old_person
+						if gender != 'unknown' and age != 'unknown':
+							### when the face object is already in the managing face_objects, update it's info
+							### get and edit
+							old_face = faces[saved_face_ids.index(object_id)]
+							old_face.gender = old_face.gender + [gender]
+							old_face.age = old_face.age + [age]
+							old_face.last_centroid = centroid
+							### update
+							faces[saved_face_ids.index(object_id)] = old_face
 					#### draw rectangle bounding box for each face
 					text = f"ID:{object_id}"
 					# print(f'\n===============================')
@@ -745,7 +749,6 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 							   thickness=1)
 				for obj in faces:
 					if obj.id not in current_object_ids:  ### face disappeared
-						### human recognition model does not have gender and age info
 						gender = 'Male' if (obj.gender.count('male') >= obj.gender.count('female')) else 'Female'
 						age = max(set(obj.age), key=obj.age.count)
 						try:
@@ -753,12 +756,6 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 							### remove disappeared object from face_objs and saved face_id
 							faces.remove(obj)
 							saved_face_ids.remove(obj.id)
-							# print(f'id: {obj.id}')
-							# print(f'gender: {gender}')
-							# print(f'age: {age}')
-							# print(f'going_in: {going_in}')
-							# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
-							# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
 							if going_in:
 								print(f'Someone is going in')
 								send(obj.id, gender, age, going_in)
@@ -786,7 +783,6 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 						y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
 						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0s[0].shape[0])
 						(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
-
 						if args.save_img or args.view_img:  # Add bbox to image
 							cv2.rectangle(im0s[0], (x1, y1), (x2, y2), (255, 0, 0), 2)
 
@@ -796,12 +792,19 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 				current_object_ids = set()
 				for (object_id, centroid) in person_objects.items():
 					current_object_ids.add(object_id)
-
-					# print(f'there are new object: {object_id}')
-					## when the person  object id is not in saved_person id. put the id into saved_object_id and put person object to person_objs for managing
-					new_person = Person(id_=object_id, first_centroid=centroid)
-					persons.append(new_person)
-					saved_person_ids.append(object_id)
+					if object_id not in saved_person_ids:
+						# print(f'there are new object: {object_id}')
+						## when the person  object id is not in saved_person id. put the id into saved_object_id and put person object to person_objs for managing
+						new_person = Person(id_=object_id, first_centroid=centroid)
+						persons.append(new_person)
+						saved_person_ids.append(object_id)
+					else:
+						### when the face object is already in the managing face_objects, update it's info
+						### get and edit
+						old_person = persons[saved_person_ids.index(object_id)]
+						old_person.last_centroid = centroid
+						### update
+						persons[saved_person_ids.index(object_id)] = old_person
 
 					#### draw rectangle bounding box for each person
 					text = f"ID:{object_id}"
