@@ -6,6 +6,8 @@
 # *******************************************************************
 import colorsys
 import os
+import time
+
 import torch
 
 os.environ['KERAS_BACKEND'] = 'tensorflow'
@@ -197,6 +199,7 @@ class VideoCapture:
 				except queue.Empty:
 					pass
 			self.q.put(frame)
+			time.sleep(0.05)
 
 	def read(self):
 		return self.q.get()

@@ -83,7 +83,7 @@ class CentroidTracker():
 			# object centroid
 			D = dist.cdist(np.array(objectCentroids), inputCentroids)
 			#### filter out the centroids distance that greater than 150 pixels
-			D_ = np.expand_dims(D[np.where(D < 250)], axis=1)
+			D_ = np.expand_dims(D[np.where(D < 450)], axis=1)
 			# print(f'Distance: {D}')
 			# print(f'objectCentroids: {objectCentroids}')
 			# print(f'inputCentroids: {inputCentroids}')
@@ -146,6 +146,7 @@ class CentroidTracker():
 						self.deregister(objectID)
 					if D[row] not in D_:
 						for col in unusedCols:
+							# print(f'D[row] {D[row]}')
 							self.register(inputCentroids[col])
 			# otherwise, if the number of input centroids is greater
 			# than the number of existing object centroids we need to
@@ -156,48 +157,3 @@ class CentroidTracker():
 
 		# return the set of trackable objects
 		return self.objects
-
-#
-# def createTrackerByName(trackerType):
-# 	# Create a tracker based on tracker name
-# 	if trackerType == 'BOOSTING':
-# 		tracker = cv2.TrackerBoosting_create()
-# 	elif trackerType == 'MIL':
-# 		tracker = cv2.TrackerMIL_create()
-# 	elif trackerType == 'KCF':
-# 		tracker = cv2.TrackerKCF_create()
-# 	elif trackerType == 'TLD':
-# 		tracker = cv2.TrackerTLD_create()
-# 	elif trackerType == 'MEDIANFLOW':
-# 		tracker = cv2.TrackerMedianFlow_create()
-# 	elif trackerType == 'GOTURN':
-# 		tracker = cv2.TrackerGOTURN_create()
-# 	elif trackerType == 'MOSSE':
-# 		tracker = cv2.TrackerMOSSE_create()
-# 	else:
-# 		tracker = cv2.TrackerCSRT_create()
-# 	return tracker
-
-
-#
-#
-# from scipy.spatial import distance as dist
-# import numpy as np
-# np.random.seed(42)
-# objectCentroids = np.random.uniform(size=(2, 2))
-# centroids = np.random.uniform(size=(2, 2))
-# D = dist.cdist(objectCentroids, centroids)
-#
-# D.shape
-# array([[0.82421549, 0.32755369, 0.33198071],
-#    [0.72642889, 0.72506609, 0.17058938]])
-#
-# mask = D<0.5
-# D = D[D<0.5]
-# D = np.expand_dims(D[np.where(D<0.5)],axis=1)
-# D = np.take(D, np.where(D>0.5), axis=1)
-# D = D[(D<0.5)]
-# array([0.32755369, 0.17058938])
-# rows = D.min(axis=1).argsort()
-# rows
-# array([1, 0])

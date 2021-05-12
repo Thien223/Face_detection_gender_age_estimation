@@ -299,7 +299,7 @@ class LoadStreams:  # multiple IP or RTSP cameras
             n += 1
             # _, self.imgs[index] = cap.read()
             cap.grab()
-            if n == 2:  # read every 4th frame
+            if n == 4:  # read every 4th frame
                 _, self.imgs[index] = cap.retrieve()
                 while self.imgs[index] is None:
                     ### if there are problem with webcam, recreate
@@ -323,7 +323,6 @@ class LoadStreams:  # multiple IP or RTSP cameras
 
         # Letterbox
         # check for common shapes
-        print(f'self.imgs {len(self.imgs)}')
         img = [letterbox(x, self.img_size, auto=self.rect, stride=self.stride)[0] for x in img0]
 
         # Stack

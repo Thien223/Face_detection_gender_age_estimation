@@ -38,73 +38,6 @@ age_choice = {0: '10', 1: '20', 2: '30', 3: '40', 4: '50'}
 # age_choice = {1: '<10', 2: '11~20', 3: '21~30', 4: '31~40', 5: '41~50', 6: '51~60', 7: '61~70', 8: '71~80', 9: '81~90', 10: '>90'}
 
 
-def detect(model, file_path, age_gender_model):
-	assert isinstance(age_gender_model,
-	                  tuple), 'run_yolo.py line 44. please pass gender and age model as a tuble to detect'
-	gender_model, age_model = age_gender_model
-	# image_ = Image.open(file_path)
-	# image = np.array(image_)[:, :, ::-1].copy()
-	#
-	# _, faces = model.detect_image(image_)
-	# # print(image.shape)
-	temp = time.time()
-
-	#
-	# gender = None
-	# age = None
-	# os.makedirs('testing_images', exist_ok=True)
-
-	#### without yolo
-	with torch.no_grad():
-		# Predict Gender and Age
-		# try:
-		#### preparing face vector before passing to age, gender estimating model
-		vectors = image_loader(file_path)
-		# print(vectors.size())
-		pred_gender = gender_model(vectors)
-		pred_age = age_model(vectors)
-
-		# print(f'age_gender_output {age_gender_output}')
-
-		## convert predicted index to meaningful label
-		# gender_indicate = [i + 1 for i in age_gender_output['gender'].argmax(dim=-1).tolist()]
-		# age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-		gender = pred_gender.argmax(dim=-1)
-		age = pred_age.item()
-	# except ValueError as e:
-	# 	## ##print(f'Run_yolo 76 error: {e}')
-	# 	continue
-	return gender, age
-
-
-# ##### with yolo
-# with torch.no_grad():
-# 	for i, (x1, y1, x2, y2) in enumerate(faces):
-# 		x1, y1, x2, y2 = int(abs(x1)), int(abs(y1)), int(abs(x2)), int(abs(y2))
-# 		face_img = image[x1: x2, y1:y2,:].copy()
-#
-# 		cv2.imwrite(f'testing_images/{temp}_original.png', image)
-# 		cv2.imwrite(f'testing_images/{temp}_cropped.png', face_img)
-#
-# 		# Predict Gender and Age
-# 		# try:
-# 		#### preparing face vector before passing to age, gender estimating model
-# 		vectors = image_loader_(face_img)
-# 		# print(vectors.size())
-# 		age_gender_output = age_gender_model(vectors)
-# 		# print(f'age_gender_output {age_gender_output}')
-#
-# 		## convert predicted index to meaningful label
-# 		# gender_indicate = [i + 1 for i in age_gender_output['gender'].argmax(dim=-1).tolist()]
-# 		# age_indicate = [i + 1 for i in age_gender_output['age'].argmax(dim=-1).tolist()]
-# 		gender = age_gender_output['gender'].argmax(dim=-1)
-# 		age = age_gender_output['age'].argmax(dim=-1)
-# 		# except ValueError as e:
-# 		# 	## ##print(f'Run_yolo 306 error: {e}')
-# 		# 	continue
-# return gender, age
-
-
 def detect_img(model, image_path, age_gender_model=None):
 	max_ = 20000
 	f_count = 0
@@ -161,7 +94,7 @@ def detect_img(model, image_path, age_gender_model=None):
 					if male_count[age] < max_:
 						try:
 							pred_gender, pred_age = detect(model=model, file_path=full_path,
-							                               age_gender_model=age_gender_model)
+														   age_gender_model=age_gender_model)
 							pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
 							print(f'pred_age {pred_age} -- real: {age_}')
 							if pred_gender == gender:
@@ -196,7 +129,7 @@ def detect_img(model, image_path, age_gender_model=None):
 				else:
 					try:
 						pred_gender, pred_age = detect(model=model, file_path=full_path,
-						                               age_gender_model=age_gender_model)
+													   age_gender_model=age_gender_model)
 						pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
 						print(f'pred_age {pred_age} -- real: {age_}')
 						if pred_gender == gender:
@@ -231,7 +164,7 @@ def detect_img(model, image_path, age_gender_model=None):
 				if female_count[age] < max_:
 					try:
 						pred_gender, pred_age = detect(model=model, file_path=full_path,
-						                               age_gender_model=age_gender_model)
+													   age_gender_model=age_gender_model)
 						pred_gender, pred_age = round(float(pred_gender)), round(float(pred_age))
 						print(f'pred_age {pred_age} -- real: {age_}')
 						if pred_gender == gender:
@@ -321,12 +254,12 @@ def image_loader_(face_img):
 	from train_module.data_helper import img_size  #### img_size=64
 	# image_set = []
 	preprocess = transforms.Compose([transforms.Resize(img_size + 4),
-	                                 transforms.RandomCrop(img_size),
-	                                 transforms.RandomHorizontalFlip(),
-	                                 transforms.ToTensor(),
-	                                 # transforms.Normalize(mean=mean,
-	                                 #                      std=std)
-	                                 ])
+									 transforms.RandomCrop(img_size),
+									 transforms.RandomHorizontalFlip(),
+									 transforms.ToTensor(),
+									 # transforms.Normalize(mean=mean,
+									 #                      std=std)
+									 ])
 	# face_img = Image.fromarray(np.uint8(face_img))
 	face_img = Image.fromarray(np.uint8(face_img))
 	# face_img = Image.open(face_img)
@@ -366,7 +299,7 @@ def send(id, gender, age, going_in):
 ### get pretrained model of age and gender detection
 def get_model(model_path=None):
 	if model_path is None:
-		model_path = 'models/checkpoints/vgg-epochs_464-step_0-gender_acc_98.5440541048281-age_acc_83.13920721397709.pth'
+		model_path = 'models/checkpoints/vgg-epochs_88-step_0-gender_acc_98.24347172647003-age_acc_78.55845701045776.pth'
 	# model_path = 'models/vgg19-epochs_97-step_0-gender_accuracy_0.979676459052346.pth'
 	checkpoint = torch.load(model_path, map_location=device)
 	model_type = checkpoint['model_type']
@@ -400,11 +333,8 @@ def detect_out(model, args):
 	"""
 	# Get names and colors
 	names = model.module.names if hasattr(model, 'module') else model.names
-	colors = [[random.randint(0, 255) for _ in range(3)] for _ in names]
 	video_path = args.video
 	# Directories
-	save_dir = Path(increment_path(Path('outputs') / 'results', exist_ok=True))  # increment run
-	(save_dir / 'labels' if args.save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 	stride = int(model.stride.max())  # model stride
 	img_size = check_img_size(640, s=stride)  # check img_size
 	# Set Dataloader
@@ -425,25 +355,14 @@ def detect_out(model, args):
 	# 		img = img.unsqueeze(0)
 	# 	# Inference
 	# 	t1 = time_synchronized()
-	from torchvision import transforms
-	processor = transforms.Compose([transforms.Resize(img_size),
-	                                 transforms.RandomHorizontalFlip(),
-	                                 transforms.ToTensor()
-	                                 ])
 	cap = VideoCapture(video_path)
 	while True:
-		frames = cap.read()
-		# ## for testing: set frames to None and check what will happen
-		# if int(time.time()) % 99 == 0:
-		# 	print('setting frames to None')
-		# 	frames = None
-		if frames is None or cap is None:
-			cap = VideoCapture(video_path)
-			print(f'recreated video capture')
-			continue
-		else:
-			print(f'processing images - out')
-
+		try:
+			frames = cap.read()
+			# ## for testing: set frames to None and check what will happen
+			# if int(time.time()) % 99 == 0:
+			# 	print('setting frames to None')
+			# 	frames = None
 			img = [letterbox(x, img_size, auto=True, stride=stride)[0] for x in [frames]]
 			# Stack
 			img = np.stack(img, 0)
@@ -459,20 +378,20 @@ def detect_out(model, args):
 				pred = model(img, augment=False)[0]
 			# Apply NMS
 			pred = non_max_suppression(pred, args.person_score, args.iou, classes=0, agnostic=False)
-			tracking_people = []
+			tracking_obj = []
 			# # Process detections
 			for i, det in enumerate(pred):  # detections per image
 				# 	# Write resultsqq
 				for *xyxy, conf, cls in reversed(det):
 					if names[int(cls)] == 'person':
 						#### tracking people in curent frame
-						(x1, y1, x2, y2) = (int(xyxy[0])*2, int(xyxy[1])*2, int(xyxy[2])*2, int(xyxy[3])*2)
-						tracking_people.append([x1, y1, x2, y2])
+						(x1, y1, x2, y2) = (int(xyxy[0]) * 2, int(xyxy[1]) * 2, int(xyxy[2]) * 2, int(xyxy[3]) * 2)
+						tracking_obj.append([x1, y1, x2, y2])
 						if args.save_img or args.view_img:  # Add bbox to image
 							label = f'{names[int(cls)]} {conf:.2f}'
 							cv2.rectangle(frames, (x1, y1), (x2, y2), (255, 255, 0), 2)
 				### update tracking objects
-				objects = tracker.update(tracking_people)
+				objects = tracker.update(tracking_obj)
 				### object ids in current frame (reset each frame)
 				current_object_ids = set()
 				for (object_id, centroid) in objects.items():
@@ -534,25 +453,30 @@ def detect_out(model, args):
 				# Stream results
 				if args.view_img:
 					cv2.imshow('detecting out', frames)
-				# Save results (image with detections)
-				# if args.save_img:
-				# 	if dataset.mode == 'image':
-				# 		cv2.imwrite(save_path, im0)
-				# 	else:  # 'video'
-				# 		if vid_path != save_path:  # new video
-				# 			vid_path = save_path
-				# 			if isinstance(vid_writer, cv2.VideoWriter):
-				# 				vid_writer.release()  # release previous video writer
-				#
-				# 			fourcc = 'mp4v'  # output video codec
-				# 			fps = vid_cap.get(cv2.CAP_PROP_FPS)
-				# 			w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-				# 			h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-				# 			vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
-				# 		vid_writer.write(im0)
+			# Save results (image with detections)
+			# if args.save_img:
+			# 	if dataset.mode == 'image':
+			# 		cv2.imwrite(save_path, im0)
+			# 	else:  # 'video'
+			# 		if vid_path != save_path:  # new video
+			# 			vid_path = save_path
+			# 			if isinstance(vid_writer, cv2.VideoWriter):
+			# 				vid_writer.release()  # release previous video writer
+			#
+			# 			fourcc = 'mp4v'  # output video codec
+			# 			fps = vid_cap.get(cv2.CAP_PROP_FPS)
+			# 			w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+			# 			h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+			# 			vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
+			# 		vid_writer.write(im0)
 
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
+		except Exception as e:
+			print(f'run_yolo.py 547. Error: {e}')
+			cap = VideoCapture(video_path)
+			print(f'Recreated video capture object')
+			continue
 	cv2.destroyAllWindows()
 
 
@@ -563,8 +487,7 @@ def detect_in(model, age_gender_model, args):
 	# the video format and fps
 	# video_fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
 
-	assert isinstance(age_gender_model,
-	                  tuple), 'run_yolo.py line 440. please pass gender and age model as a tuble to detect'
+	assert isinstance(age_gender_model, tuple), 'run_yolo.py line 440. please pass gender and age model as a tuble to detect'
 	gender_model, age_model = age_gender_model
 	if args.half:
 		model.half()
@@ -573,9 +496,6 @@ def detect_in(model, age_gender_model, args):
 	"""
 	# Get names and colors
 	video_path = args.video
-	# Directories
-	save_dir = Path(increment_path(Path('outputs') / 'results', exist_ok=True))  # increment run
-	(save_dir / 'labels' if args.save_txt else save_dir).mkdir(parents=True, exist_ok=True)  # make dir
 	# Set Dataloader
 	tracker = CentroidTracker(maxDisappeared=60)
 	saved_object_ids = []
@@ -585,17 +505,8 @@ def detect_in(model, age_gender_model, args):
 	expand_ratio = 0.0
 
 	while True:
-		frames = cap.read()
-		# ## for testing: set frames to None and check what will happen
-		# if int(time.time()) % 99 == 0:
-		# 	print('setting frames to None')
-		# 	frames = None
-		if frames is None or cap is None:
-			cap = VideoCapture(video_path)
-			print(f'recreated video capture')
-			continue
-		else:
-			print(f'processing images - in')
+		try:
+			frames = cap.read()
 			image = Image.fromarray(frames)
 			with torch.no_grad():
 				image, faces = model.detect_image(image)
@@ -627,6 +538,7 @@ def detect_in(model, age_gender_model, args):
 						age_indicate = round(float(pred_age))
 						gender = gender_choice.get(gender_indicate)
 						age = age_choice.get(age_indicate)
+						print(f'detected! gender: {gender}')
 				except Exception as e:
 					print(f'run_yolo_new.py line 510. Error {e}')
 					continue
@@ -660,17 +572,17 @@ def detect_in(model, age_gender_model, args):
 				# if gender != 'unknown' and age != 'unknown': print(f"ID:{object_id}--gender {gender}--age {age}")
 				# print(f'===============================\n')
 				cv2.putText(img=frames,
-				            text=text,
-				            org=(centroid[0] - 10, centroid[1] - 10),
-				            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-				            fontScale=0.55,
-				            color=(0, 255, 0),
-				            thickness=2)
+							text=text,
+							org=(centroid[0] - 10, centroid[1] - 10),
+							fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+							fontScale=0.55,
+							color=(0, 255, 0),
+							thickness=2)
 				cv2.circle(img=frames,
-				           center=(centroid[0], centroid[1]),
-				           radius=4,
-				           color=(0, 255, 0),
-				           thickness=1)
+						   center=(centroid[0], centroid[1]),
+						   radius=4,
+						   color=(0, 255, 0),
+						   thickness=1)
 			# print(f'len(face_objs): {len(face_objs)}')
 			# print(f'current_object_ids: {current_object_ids}')
 			for obj in face_objs:
@@ -700,11 +612,243 @@ def detect_in(model, age_gender_model, args):
 				cv2.imshow('view', frames)
 				if cv2.waitKey(1) & 0xFF == ord('q'):
 					break
+		except Exception as e:
+			print(f'Run_yolo.py 693. Error: {e}')
+			cap = VideoCapture(video_path)
+			print(f'Recreated video capture object')
+			continue
 	cv2.destroyAllWindows()
+
+
 #####################################################################
+
+def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
+	assert isinstance(age_gender_model, tuple), 'run_yolo.py line 440. please pass gender and age model as a tuble to detect'
+	gender_model, age_model = age_gender_model
+	if args.half:
+		yolo_face.half()
+		yolo_human.half()
+
+	###### for human recognition #########
+	# Get names and colors
+	names = yolo_human.module.names if hasattr(yolo_human, 'module') else yolo_human.names
+	video_path = args.video
+	# get stride and image size
+	stride = int(yolo_human.stride.max())  # model stride
+	img_size = check_img_size(640, s=stride)  # check img_size
+	# Set Dataloader
+	vid_path, vid_writer = None, None
+	#### tracking objects
+	face_tracker = CentroidTracker(maxDisappeared=60)
+	person_tracker = CentroidTracker(maxDisappeared=60)
+	### detected object ids
+	saved_face_ids = []
+	### person objects list
+	faces = []
+	### detected object ids
+	saved_person_ids = []
+	### person objects list
+	persons = []
+	# dataset = LoadStreams(video_path)
+	expand_ratio = 0.0
+	dataset = LoadStreams(video_path, img_size=img_size, stride=stride)
+	for path, img, im0s, vid_cap in dataset:
+		try:
+			img = torch.from_numpy(img).to(device).float()
+			img /= 255.0  # 0 - 255 to 0.0 - 1.0
+			if img.ndimension() == 3:
+				img = img.unsqueeze(0)
+			with torch.no_grad():
+				detected_person = yolo_human(img, augment=False)[0]
+				detected_face = yolo_face(img, augment=False)[0]
+			# Apply NMS
+			detected_person = non_max_suppression(detected_person, args.person_score, args.iou, classes=0, agnostic=False)
+			detected_face = non_max_suppression(detected_face, args.face_score, args.iou, classes=0, agnostic=False)
+			tracking_faces = []
+			tracking_persons = []
+			# detected_objs = [torch.cat((detected_person[0], detected_face[0]))]
+
+
+			for i, det in enumerate(detected_face):  # detections per image
+				# Rescale boxes from img_size to im0 size
+				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0s[0].copy().shape).round()
+
+				# 	# Write resultsqq
+				gender, age = 'unknown','unknown'
+				for *xyxy, conf, cls in reversed(det):
+					if int(cls) == 0:
+						#### tracking people in curent frame
+
+						(x1, y1, x2, y2) = (int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3]))
+						tracking_faces.append([x1, y1, x2, y2])
+						### expand bounding boxes by expand_ratio
+						### x corresponding to column in numpy array --> dim = 1
+						x1 = max(x1 - (expand_ratio * (x2 - x1)), 0)
+						x2 = min(x2 + (expand_ratio * (x2 - x1)), im0s[0].shape[1])
+						### y corresponding to row in numpy array --> dim = 0
+						y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
+						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0s[0].shape[0])
+						(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
+						### extract the face
+						det_img = im0s[0][y1: y2, x1:x2,:].copy()
+						# Predict Gender and Age
+						with torch.no_grad():
+							#### preparing face vector before passing to age, gender estimating model
+							vectors = image_loader_(det_img)
+							# age_gender_output = age_gender_model(vectors)
+							pred_gender = gender_model(vectors)
+							pred_age = age_model(vectors)
+							## convert predicted index to meaningful label
+							gender_indicate = pred_gender.argmax(dim=1).item()
+							age_indicate = round(float(pred_age))
+							gender = gender_choice.get(gender_indicate)
+							age = age_choice.get(age_indicate)
+							print(f"detected! {gender} -- {age} years old")
+						if args.save_img or args.view_img:  # Add bbox to image
+							cv2.rectangle(im0s[0], (x1, y1), (x2, y2), (255, 0, 255), 2)
+
+				### update tracking objects
+				face_objects = face_tracker.update(tracking_faces)
+				### object ids in current frame (reset each frame)
+				current_object_ids = set()
+				for (object_id, centroid) in face_objects.items():
+					current_object_ids.add(object_id)
+					if gender != 'unknown' and age != 'unknown':
+						# print(f'there are new object: {object_id}')
+						## when the face  object id is not in saved_face id. put the id into saved_object_id and put face object to face_objs for managing
+						new_face = Face(id_=object_id, gender=[gender], age=[age], first_centroid=centroid)
+						faces.append(new_face)
+						saved_face_ids.append(object_id)
+					else:
+						### when the face object is already in the managing face_objects, update it's info
+						### get and edit
+						old_person = faces[saved_face_ids.index(object_id)]
+						old_person.last_centroid = centroid
+						### update
+						faces[saved_face_ids.index(object_id)] = old_person
+					#### draw rectangle bounding box for each face
+					text = f"ID:{object_id}"
+					# print(f'\n===============================')
+					# print(text)
+					# print(f'===============================\n')
+					cv2.putText(img=im0s[0],
+								text=text,
+								org=(centroid[0] - 10, centroid[1] - 10),
+								fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+								fontScale=0.55,
+								color=(0, 255, 0),
+								thickness=2)
+					cv2.circle(img=im0s[0],
+							   center=(centroid[0], centroid[1]),
+							   radius=4,
+							   color=(0, 255, 0),
+							   thickness=1)
+				for obj in faces:
+					if obj.id not in current_object_ids:  ### face disappeared
+						### human recognition model does not have gender and age info
+						gender = 'unknown'
+						age = -1
+						try:
+							going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+							### remove disappeared object from face_objs and saved face_id
+							faces.remove(obj)
+							saved_face_ids.remove(obj.id)
+							# print(f'id: {obj.id}')
+							# print(f'gender: {gender}')
+							# print(f'age: {age}')
+							# print(f'going_in: {going_in}')
+							# txt = f'id: {obj.id}\ngender: {gender}\nage: {age}\ngoing_in: {going_in}\n'
+							# yield (f'<br><br><br>id: {obj.id}<br>gender: {gender}<br>age: {age}<br>going_in: {going_in}')
+							if not going_in:
+								print(f'Someone is going out')
+								send(obj.id, gender, age, going_in)
+						except Exception as e:
+							faces.remove(obj)
+							saved_face_ids.remove(obj.id)
+							continue
+
+
+			for i, det in enumerate(detected_person):  # detections per image
+				# Rescale boxes from img_size to im0 size
+				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0s[0].copy().shape).round()
+
+				# 	# Write resultsqq
+				for *xyxy, conf, cls in reversed(det):
+					if int(cls) == 0:
+						#### tracking people in curent frame
+						(x1, y1, x2, y2) = (int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3]))
+						tracking_persons.append([x1, y1, x2, y2])
+						### expand bounding boxes by expand_ratio
+						### x corresponding to column in numpy array --> dim = 1
+						x1 = max(x1 - (expand_ratio * (x2 - x1)), 0)
+						x2 = min(x2 + (expand_ratio * (x2 - x1)), im0s[0].shape[1])
+						### y corresponding to row in numpy array --> dim = 0
+						y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
+						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0s[0].shape[0])
+						(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
+
+						if args.save_img or args.view_img:  # Add bbox to image
+							cv2.rectangle(im0s[0], (x1, y1), (x2, y2), (255, 0, 0), 2)
+
+				### update tracking objects
+				person_objects = person_tracker.update(tracking_persons)
+				### object ids in current frame (reset each frame)
+				current_object_ids = set()
+				for (object_id, centroid) in person_objects.items():
+					current_object_ids.add(object_id)
+
+					# print(f'there are new object: {object_id}')
+					## when the person  object id is not in saved_person id. put the id into saved_object_id and put person object to person_objs for managing
+					new_person = Person(id_=object_id, first_centroid=centroid)
+					persons.append(new_person)
+					saved_person_ids.append(object_id)
+
+					#### draw rectangle bounding box for each person
+					text = f"ID:{object_id}"
+					# print(f'\n===============================')
+					# print(text)
+					# print(f'===============================\n')
+					cv2.putText(img=im0s[0],
+								text=text,
+								org=(centroid[0] - 10, centroid[1] - 10),
+								fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+								fontScale=0.55,
+								color=(0, 255, 0),
+								thickness=2)
+					cv2.circle(img=im0s[0],
+							   center=(centroid[0], centroid[1]),
+							   radius=4,
+							   color=(0, 255, 0),
+							   thickness=1)
+				for obj in persons:
+					if obj.id not in current_object_ids:  ### person disappeared
+						### human recognition model does not have gender and age info
+						gender = 'unknown'
+						age = -1
+						try:
+							going_in = True if obj.first_centroid[-1] < obj.last_centroid[-1] else False
+							### remove disappeared object from (person_objs and saved person_id)
+							persons.remove(obj)
+							saved_person_ids.remove(obj.id)
+							if not going_in:
+								print(f'Someone is going out')
+								send(obj.id, gender, age, going_in)
+						except Exception as e:
+							persons.remove(obj)
+							saved_person_ids.remove(obj.id)
+							continue
+				if args.view_img:
+					cv2.imshow('view', im0s[0])
+			if cv2.waitKey(1) & 0xFF == ord('q'):
+				break
+		except NotImplementedError as e:
+			print(f'Run_yolo.py 693. Error: {e}')
+			continue
+	cv2.destroyAllWindows()
+
 def get_args():
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--model', type=str, default='models/checkpoints/YOLO_Face.h5', help='path to model weights file')
+	parser.add_argument('--model', type=str, default='models/checkpoints/yolov5s_face.pt', help='path to model weights file')
 	parser.add_argument('--anchors', type=str, default='cfg/yolo_anchors.txt', help='path to anchor definitions')
 	parser.add_argument('--classes', type=str, default='cfg/face_classes.txt', help='path to class definitions')
 	parser.add_argument('--face-score', type=float, default=0.5, help='the face score threshold [0.0 ~ 1.0]')
@@ -728,7 +872,7 @@ if __name__ == "__main__":
 	## load arguments
 	args = get_args()
 	### load models
-	yolov3 = YOLO(args)
+	# yolov3 = YOLO(args)
 
 	if isinstance(args.device, list):
 		device = torch.device(f'cuda:{int(id_)}' for id_ in args.device)
@@ -736,14 +880,18 @@ if __name__ == "__main__":
 		device = torch.device(f'cuda:{int(args.device)}')
 	else:
 		device = torch.device('cpu')
-	yolov5 = attempt_load(args.weights, map_location=device)
+	yolo_face = attempt_load(args.model, map_location=device)
+	yolo_human = attempt_load(args.weights, map_location=device)
 	age_gender_model = get_model()
 	# detect_img(yolov3, r'G:\locs_projects\on_working\images\test_images', age_gender_model)
 	# detect_img(yolov3, r'val_images', age_gender_model)
-	## run 2 models on separate threads
-	run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
-	run_out = threading.Thread(target=detect_out, args=(yolov5, args))
-	run_out.start()
-	run_in.start()
-	run_out.join()
-	run_in.join()
+	detect_in_and_out(yolo_face, yolo_human, age_gender_model, args)
+## run 2 models on separate threads
+# run_in = threading.Thread(target=detect_in, args=(yolov3, age_gender_model, args))
+# # run_out = threading.Thread(target=detect_out, args=(yolov5, args))
+#
+# # run_out.start()
+# run_in.start()
+# # detect_out(yolov5, args)
+# # run_out.join()
+# run_in.join()

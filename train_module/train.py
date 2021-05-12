@@ -25,7 +25,7 @@ def get_args():
 	train.add_argument('--epochs', type=int, default=25)
 	train.add_argument('--batch_size', type=int, default=80)
 	train.add_argument('--model', choices=['vgg', 'cspvgg', 'inception'], type=str, default='vgg')
-	train.add_argument('--learning_rate', type=float, default=0.0025)
+	train.add_argument('--learning_rate', type=float, default=0.003)
 	train.add_argument('--print_train_step', type=int, default=100)
 	train.add_argument('--saving_point_step', type=int, default=2500)
 	train.add_argument('--checkpoint', type=str, default=None, help='Checkpoint to resume training')
