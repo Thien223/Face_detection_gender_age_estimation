@@ -13,7 +13,7 @@ from cv2 import cv2
 
 from modules.new_yolo import Face, Person, YOLO, attempt_load, VideoCapture
 from train_module.data_helper import _age_categorization
-from utils.datasets import LoadStreams, letterbox
+from utils.datasets import LoadStreams, LoadImages, letterbox
 from utils.general import check_img_size, non_max_suppression, scale_coords, \
 	xyxy2xywh, increment_path
 from utils.plots import plot_one_box
@@ -288,25 +288,31 @@ def send(id, gender, age, going_in):
 	}
 	str_ = 'mutation{createDetection(identifier:%d, age:\"%s\", gender:\"%s\", inAndOut:%s){identifier age gender inAndOut}}' % (
 		id, age, gender, str(going_in).lower())
-	data = dict(
-		query=str_,
-		variables={}
-	)
+	data = dict(query=str_, variables={})
+	print(data)
 	requests.post(URL, data=json.dumps(data), headers=headers)
 
 
 ### get pretrained model of age and gender detection
 def get_model(model_path=None):
 	if model_path is None:
-		model_path = 'models/checkpoints/vgg-epochs_88-step_0-gender_acc_98.24347172647003-age_acc_78.55845701045776.pth'
-	# model_path = 'models/vgg19-epochs_97-step_0-gender_accuracy_0.979676459052346.pth'
+		model_path = 'models/checkpoints/vgg-epochs_464-step_0-gender_acc_98.5440541048281-age_acc_83.13920721397709.pth'
+	gender_model_path = 'models/checkpoints/vgg19-epochs_638-step_0-gender_accuracy_0.9546627402305603.pth'
+		# gender_model_path = 'models/vgg19-epochs_97-step_0-gender_accuracy_0.979676459052346.pth'
 	checkpoint = torch.load(model_path, map_location=device)
+	checkpoint_2 = torch.load(gender_model_path, map_location=device)
 	model_type = checkpoint['model_type']
+
+	weights = {}
+	for k,v in checkpoint_2['model_state_dict'].items():
+		k=k.replace('sex','gender')
+		weights[k] = v
+
 	if model_type == 'vgg':
-		from modules.vgg import Gender_VGG, Age_VGG
-		gender_model = Gender_VGG(vgg_type='vgg19')
+		from modules.vgg import VGG, Age_VGG
+		gender_model = VGG(vgg_type='vgg19')
 		age_model = Age_VGG(vgg_type='vgg19')
-		gender_model.load_state_dict(checkpoint['gender_model_weights'])
+		gender_model.load_state_dict(weights)
 		age_model.load_state_dict(checkpoint['age_model_weights'])
 		gender_model.eval()
 		age_model.eval()
@@ -650,8 +656,15 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 	persons = []
 	# dataset = LoadStreams(video_path)
 	expand_ratio = 0.0
-	dataset = LoadStreams(video_path, img_size=img_size, stride=stride)
+	is_webcam = video_path.lower().startswith(('rtsp://', 'rtmp://', 'http://'))
+	if is_webcam:
+		import torch.backends.cudnn as cudnn
+		cudnn.benchmark = True
+		dataset = LoadStreams(video_path, img_size=img_size, stride=stride)
+	else:
+		dataset = LoadImages(video_path, img_size=img_size, stride=stride)
 	for path, img, im0s, vid_cap in dataset:
+		im0 = im0s[0] if is_webcam else im0s
 		try:
 			img = torch.from_numpy(img).to(device).float()
 			img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -670,7 +683,7 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 
 			for i, det in enumerate(detected_face):  # detections per image
 				# Rescale boxes from img_size to im0 size
-				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0s[0].copy().shape).round()
+				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.copy().shape).round()
 
 				# 	# Write resultsqq
 				gender, age = 'unknown','unknown'
@@ -683,13 +696,13 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 						### expand bounding boxes by expand_ratio
 						### x corresponding to column in numpy array --> dim = 1
 						x1 = max(x1 - (expand_ratio * (x2 - x1)), 0)
-						x2 = min(x2 + (expand_ratio * (x2 - x1)), im0s[0].shape[1])
+						x2 = min(x2 + (expand_ratio * (x2 - x1)), im0.shape[1])
 						### y corresponding to row in numpy array --> dim = 0
 						y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
-						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0s[0].shape[0])
+						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0.shape[0])
 						(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
 						### extract the face
-						det_img = im0s[0][y1: y2, x1:x2,:].copy()
+						det_img = im0[y1: y2, x1:x2,:].copy()
 						# Predict Gender and Age
 						with torch.no_grad():
 							#### preparing face vector before passing to age, gender estimating model
@@ -698,13 +711,13 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 							pred_gender = gender_model(vectors)
 							pred_age = age_model(vectors)
 							## convert predicted index to meaningful label
-							gender_indicate = pred_gender.argmax(dim=1).item()
+							gender_indicate = pred_gender['gender'].argmax(dim=1).item()
 							age_indicate = round(float(pred_age))
 							gender = gender_choice.get(gender_indicate)
 							age = age_choice.get(age_indicate)
-							# print(f"detected! {gender} -- {age} years old")
+							# print(f"detected! {gender} -- {age} years decade")
 						if args.save_img or args.view_img:  # Add bbox to image
-							cv2.rectangle(im0s[0], (x1, y1), (x2, y2), (255, 0, 255), 2)
+							cv2.rectangle(im0, (x1, y1), (x2, y2), (255, 0, 255), 2)
 
 				### update tracking objects
 				face_objects = face_tracker.update(tracking_faces)
@@ -735,14 +748,14 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 					# print(f'\n===============================')
 					# print(text)
 					# print(f'===============================\n')
-					cv2.putText(img=im0s[0],
+					cv2.putText(img=im0,
 								text=text,
 								org=(centroid[0] - 10, centroid[1] - 10),
 								fontFace=cv2.FONT_HERSHEY_SIMPLEX,
 								fontScale=0.55,
 								color=(0, 255, 0),
 								thickness=2)
-					cv2.circle(img=im0s[0],
+					cv2.circle(img=im0,
 							   center=(centroid[0], centroid[1]),
 							   radius=4,
 							   color=(0, 255, 0),
@@ -767,7 +780,7 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 
 			for i, det in enumerate(detected_person):  # detections per image
 				# Rescale boxes from img_size to im0 size
-				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0s[0].copy().shape).round()
+				det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.copy().shape).round()
 
 				# 	# Write resultsqq
 				for *xyxy, conf, cls in reversed(det):
@@ -778,13 +791,13 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 						### expand bounding boxes by expand_ratio
 						### x corresponding to column in numpy array --> dim = 1
 						x1 = max(x1 - (expand_ratio * (x2 - x1)), 0)
-						x2 = min(x2 + (expand_ratio * (x2 - x1)), im0s[0].shape[1])
+						x2 = min(x2 + (expand_ratio * (x2 - x1)), im0.shape[1])
 						### y corresponding to row in numpy array --> dim = 0
 						y1 = max(y1 - (expand_ratio * (y2 - y1)), 0)
-						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0s[0].shape[0])
+						y2 = min(y2 + (expand_ratio * (y2 - y1)), im0.shape[0])
 						(x1, y1, x2, y2) = (int(x1), int(y1), int(x2), int(y2))
 						if args.save_img or args.view_img:  # Add bbox to image
-							cv2.rectangle(im0s[0], (x1, y1), (x2, y2), (255, 0, 0), 2)
+							cv2.rectangle(im0, (x1, y1), (x2, y2), (255, 0, 0), 2)
 
 				### update tracking objects
 				person_objects = person_tracker.update(tracking_persons)
@@ -811,14 +824,14 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 					# print(f'\n===============================')
 					# print(text)
 					# print(f'===============================\n')
-					cv2.putText(img=im0s[0],
+					cv2.putText(img=im0,
 								text=text,
 								org=(centroid[0] - 10, centroid[1] - 10),
 								fontFace=cv2.FONT_HERSHEY_SIMPLEX,
 								fontScale=0.55,
 								color=(0, 255, 0),
 								thickness=2)
-					cv2.circle(img=im0s[0],
+					cv2.circle(img=im0,
 							   center=(centroid[0], centroid[1]),
 							   radius=4,
 							   color=(0, 255, 0),
@@ -841,11 +854,11 @@ def detect_in_and_out(yolo_face, yolo_human, age_gender_model, args):
 							saved_person_ids.remove(obj.id)
 							continue
 				if args.view_img:
-					cv2.imshow('view', im0s[0])
+					cv2.imshow('view', im0)
 			if cv2.waitKey(1) & 0xFF == ord('q'):
 				break
 		except Exception as e:
-			print(f'Run_yolo.py 693. Error: {e}')
+			print(f'Run_yolo.py 854. Error: {e}')
 			continue
 	cv2.destroyAllWindows()
 
