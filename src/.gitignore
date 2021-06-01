@@ -1,0 +1,17 @@
+apex/
+.env/
+venv/
+.idea/
+.git/
+*/data/
+*/dataset/
+*/__pycache__/
+.ipynb_checkpoints/
+*/backup/
+*/checkpoints/
+*/runs/
+*/logs/
+*/outdir/
+*/outputs/
+*/testing_images/
+*/val_images/
