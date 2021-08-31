@@ -12,7 +12,7 @@ from train_module.data_helper import FaceImageDataset, split_dataset
 from torch.utils.tensorboard import SummaryWriter
 import time
 from utils.util import load_checkpoint
-# from train_module.data_helper import save_tensor_as_image
+from train_module.data_helper import save_tensor_as_image
 torch.manual_seed(1542)
 torch.cuda.manual_seed(1542)
 torch.backends.deterministic = True
@@ -91,6 +91,7 @@ class Trainer(object):
 		# #### when using mse to estimating age (age as continuos variable)
 		# self.age_branch_criterion = nn.MSELoss()
 		# self.age_branch_criterion = nn.L1Loss()
+
 		self.optimizer = opt.Adam(self.model.parameters(),lr=self.arguments.learning_rate)
 		# self.age_optimizer = opt.Adam(self.age_model.parameters(),lr=self.arguments.learning_rate)
 
@@ -108,13 +109,18 @@ class Trainer(object):
 		# model & optimizer & loss
 		self.model.to(device)
 		# self.age_model.to(device)
+
+
 		# Training
 		total_it = 0
-		#val_total_loss, val_total_gender_loss, val_total_age_loss, val_total_gender_acc, val_total_age_acc = 0, 0, 0, 0, 0
+		val_total_loss, val_total_gender_loss, val_total_age_loss, val_total_gender_acc, val_total_age_acc = 0, 0, 0, 0, 0
+
 		# Training Start...
 		save=False
 		best_acc = 0
+
 		for epoch in range(s_epoch, self.arguments.epochs):
+
 			start = time.time()
 			train_progress_bar = tqdm(enumerate(train_loader), total=len(train_loader))
 			for i, (img,gender,age) in train_progress_bar:
@@ -160,7 +166,10 @@ class Trainer(object):
 			# 모델 저장
 			# Console 출력
 			val_total_acc= self.val(save=save)
-
+			print('\n================================')
+			print(f'Validation:')
+			print(f'val_total_acc: {val_total_acc}')
+			print('================================\n')
 
 			# Tensorboard 출력
 			if self.type==0:
@@ -180,17 +189,13 @@ class Trainer(object):
 				best_acc = val_total_acc
 				filename = f'{type}-best.pth'
 				self.save_model(epochs=epoch, filename=filename)
+
 			print(f'Finished  epoch {epoch}: -- it takes {time.time()-start} seconds..')
-			print('\n================================')
-			print(f'Validation:')
-			print(f'val_total_acc: {val_total_acc}')
-			print(f'best validation acc : {best_acc}')
-			print('================================\n')
-		### validating the last time
+
+
 		val_total_acc = self.val(save=save)
 		print(f'\n=============type: {"Gender" if self.type==0 else "Age"}===================')
 		print(f'Validation acc: {val_total_acc}')
-		print(f'best validation acc : {best_acc}')
 		print('================================\n')
 
 		# Tensorboard 출력
@@ -213,6 +218,7 @@ class Trainer(object):
 		print(f"=====================================================\n")
 		val_loader = self.val_loader()
 		total_images = len(val_loader) * 1 #### validation batch size set to 1
+		total_gender_acc, total_age_acc = 0, 0
 		self.model.eval()
 		# self.age_model.eval()
 		correct_count=0
@@ -233,12 +239,12 @@ class Trainer(object):
 					pred = self.model(img)
 					target = target.to(device)
 					out = pred.item()
-				#
-				# if save:
-				# 	temp = time.time()
-				# 	os.makedirs('val_images', exist_ok=True)
-				# 	img_ = img.squeeze(0)
-				# 	save_tensor_as_image(img_,f"val_images/{temp}_{int(target)}.png")
+
+				if save:
+					temp = time.time()
+					os.makedirs('val_images', exist_ok=True)
+					img_ = img.squeeze(0)
+					save_tensor_as_image(img_,f"val_images/{temp}_{int(target)}.png")
 				if idx%500==0:
 					print('')
 					print(f'pred: {round(float(out))} -- target: {round(float(target.cpu()))}')
@@ -249,7 +255,21 @@ class Trainer(object):
 		# calculation average loss & accuracy
 		acc = 100 * correct_count / total_images
 		print(f"validation correct count: {correct_count}/{total_images}")
+
 		return acc
+
+	# def get_loss(self, out, tar):
+	# 	"""
+	# 	take predicted output and target then calculate the loss and (count of) accuracy
+	# 	"""
+	# 	gender_out, age_out = out['gender'].to(device), out['age'].to(device)
+	# 	gender_tar, age_tar = tar['gender'].to(device), tar['age'].to(device)
+	#
+	# 	# calculation loss
+	# 	gender_loss = self.gender_branch_criterion(input=gender_out,target=gender_tar)
+	# 	age_loss = self.age_branch_criterion(input=age_out,target=age_tar)
+	# 	return gender_loss, age_loss
+
 
 
 	def get_accuracy(self, out, tar):
@@ -262,13 +282,14 @@ class Trainer(object):
 		### because target gender is one hot tensor --> convert to int first
 		gender_correct = torch.argmax(gender_tar,dim=-1).eq(torch.argmax(gender_out,dim=-1)).sum().to(torch.float32)
 		### target age is int, do not need to convert to int
-		# age_indicate = age_out.argmax(dim=-1)
+		age_indicate = age_out.argmax(dim=-1)
 		age_correct = age_tar.eq(age_out).sum().to(torch.float32)
 		return gender_correct, age_correct
 
 	def train_loader(self) -> DataLoader:
 		# train information.json List
 		train_info = self.dataset_info[0]
+
 		# train FaceImageDataset & DataLoader
 		train_dataset = FaceImageDataset(info=train_info)
 
@@ -286,12 +307,19 @@ class Trainer(object):
 		val_data_loader = DataLoader(dataset=val_dataset, batch_size=1)
 		return val_data_loader
 
+	# def get_model(self):
+	# 	from modules.vgg import Gender_VGG, Age_VGG
+	# 	if self.type==0:
+	# 		return Gender_VGG(vgg_type='vgg19')
+	# 	else:
+	# 		return Age_VGG(vgg_type='vgg19')
+
 	def get_model(self):
-		from modules.vgg import Gender_VGG, Age_VGG
+		from modules.vgg import Gender_New, Age_New
 		if self.type==0:
-			return Gender_VGG(vgg_type='vgg19')
+			return Gender_New()
 		else:
-			return Age_VGG(vgg_type='vgg19')
+			return Age_New()
 
 
 	def save_model(self, epochs, filename):
@@ -337,6 +365,7 @@ if __name__ == '__main__':
 	if args.checkpoint is not None:
 		model, epoch = load_checkpoint(args.checkpoint)
 		trainer.model = model
+		trainer.model.train()
 	print(f'start epoch {s_epoch}')
 	trainer.train(s_epoch=s_epoch)
 

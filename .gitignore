@@ -15,3 +15,5 @@ outdir/
 outputs/
 testing_images/
 val_images/
+*.mp4
+*.avi

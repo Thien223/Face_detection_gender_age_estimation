@@ -18,3 +18,4 @@ facenet-pytorch>=2.5.2
 seaborn
 pandas
 h5py==2.10.0
+scikit-image>=0.18.2

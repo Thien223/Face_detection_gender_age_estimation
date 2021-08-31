@@ -3,6 +3,58 @@ import os
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
+def save_raw_video(path, output_path='output_raw.avi'):
+    from cv2 import cv2
+    cap = cv2.VideoCapture(path)
+    FPS = int(cap.get(5))
+    width = int(cap.get(3))
+    height = int(cap.get(4))
+    vid_writer = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), FPS, (width,height))
+    while cap.isOpened():
+        ret, frames = cap.read()
+        cv2.imshow('view',frames)
+        vid_writer.write(frames)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    vid_writer.release()
+    cv2.destroyAllWindows()
+
+
+def lbp(img_gray):
+    from PIL import Image
+    import numpy as np
+    val_list=[]
+    height, width = img_gray.size
+    print(height,width)
+    img_pad = Image.new("L", (height+2, width+2))
+    img_pad.paste(img_gray, (1,1))
+    pixels=np.array(img_pad)
+    center = pixels[1:height+1, 1:width+1]
+    top_right = pixels[0:height, 2:width+2]
+    right = pixels[1:height+1, 2:width+2]
+    bottom_right = pixels[2:height+2, 2:width+2]
+    bottom = pixels[2:height+2, 1:width+1]
+    bottom_left = pixels[2:height+2, 0:width]
+    left = pixels[1:height+1, 0:width]
+    top_left = pixels[0:height, 0:width]
+    top = pixels[0:height, 1:width+1]
+    val_list.append(np.where(center >= top_right, 1, 0))
+    val_list.append(np.where(center >= right, 1, 0))
+    val_list.append(np.where(center >= bottom_right, 1, 0))
+    val_list.append(np.where(center >= bottom, 1, 0))
+    val_list.append(np.where(center >= bottom_left, 1, 0))
+    val_list.append(np.where(center >= left, 1, 0))
+    val_list.append(np.where(center >= top_left, 1, 0))
+    val_list.append(np.where(center >= top, 1, 0))
+    val_ar=np.array(val_list)
+    power_val = np.array([1, 2, 4, 8, 16, 32, 64, 128])
+    results=np.zeros((height,width))
+    # print(results.shape)
+    for i in range(8):
+        results+=(val_ar[i]*power_val[i])
+    img_lbp = Image.fromarray(results).convert('L')
+    return img_lbp
+
 
 def letterbox(img, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     # Resize and pad image while meeting stride-multiple constraints

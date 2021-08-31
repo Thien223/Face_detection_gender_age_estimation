@@ -16,7 +16,7 @@ from train_module.data_helper import img_size
 
 def cnn_layers(vgg_type, batch_norm = True):
 	layers = []
-	input_channel = 3  ### RGB image
+	input_channel = 6  ### RGB image
 	#### vgg 19 architecture: 2 conv_64 + max pooling + 2 conv_128 + max_pooling + 4 conv_256 + max_pooling + (4 conv_512 + max_pooling) * 2
 	for output_channel in cfg[vgg_type]:
 		if output_channel == 'M':
@@ -101,7 +101,7 @@ class Age_VGG(nn.Module):
 		pred_age = self.classify(x)
 		return pred_age
 
-
+#
 #
 # class Inception_VGG(nn.Module):
 # 	def __init__(self, vgg_type, batch_norm=True):
@@ -134,59 +134,59 @@ class Age_VGG(nn.Module):
 # 			input_channel = output_channel
 # 		return nn.Sequential(*layers)
 #
-#
-# class Conv2d(nn.Module):
-# 	'''
-# 	Usual 2D convolutional neural network. Included the batch normalization and activation function.
-# 	If the batch normalization is not necessary, use fuseforward instead of forward function.
-# 	'''
-# 	def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, groups=1, activation=None, w_init_gain='linear'):  # ch_in, ch_out, kernel, stride, padding, groups
-# 		super(Conv2d, self).__init__()
-# 		self.conv = torch.nn.Conv2d(in_channels = in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups, bias=False)
-# 		self.bn = torch.nn.BatchNorm2d(out_channels)
-# 		activation = activation.strip().replace(' ','').lower() if activation is not None else activation
-# 		assert activation in ['relu','silu','leakyrelu','tank','sigmoid','relu6',None],"activation function must be one of ['relu','relu6','silu','leakyrelu','tank','sigmoid']"
-# 		if activation =='relu':
-# 			self.activation = torch.nn.ReLU()
-# 		elif activation == 'tanh':
-# 			self.activation = torch.nn.Tanh()
-# 		elif activation=='leakyrelu':
-# 			self.activation = torch.nn.LeakyReLU()
-# 		elif activation=='sigmoid':
-# 			self.activation = torch.nn.Sigmoid()
-# 		elif activation=='relu6':
-# 			self.activation = torch.nn.ReLU6()
-# 		else:
-# 			self.activation = None
-# 		### initialized model weights
-# 		torch.nn.init.xavier_uniform_(
-# 			self.conv.weight, gain=torch.nn.init.calculate_gain(w_init_gain))
-#
-#
-# 	def forward(self, x):
-# 		'''
-# 		forward the process.
-# 		Parameters
-# 		----------
-# 		x input of model
-#
-# 		Returns
-# 		-------
-# 		output of model
-# 		'''
-# 		if self.activation is not None:
-# 			return self.activation(self.bn(self.conv(x)))
-# 		else:
-# 			return self.bn(self.conv(x))
-#
-#
-# 	def fuseforward(self, x):
-# 		if self.activation is not None:
-# 			return self.activation(self.conv(x))
-# 		else:
-# 			return self.conv(x)
-#
-#
+
+class Conv2d(nn.Module):
+	'''
+	Usual 2D convolutional neural network. Included the batch normalization and activation function.
+	If the batch normalization is not necessary, use fuseforward instead of forward function.
+	'''
+	def __init__(self, in_channels, out_channels, kernel_size=1, stride=1, padding=0, groups=1, activation=None, w_init_gain='linear'):  # ch_in, ch_out, kernel, stride, padding, groups
+		super(Conv2d, self).__init__()
+		self.conv = torch.nn.Conv2d(in_channels = in_channels, out_channels=out_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=groups, bias=False)
+		self.bn = torch.nn.BatchNorm2d(out_channels)
+		activation = activation.strip().replace(' ','').lower() if activation is not None else activation
+		assert activation in ['relu','silu','leakyrelu','tank','sigmoid','relu6',None],"activation function must be one of ['relu','relu6','silu','leakyrelu','tank','sigmoid']"
+		if activation =='relu':
+			self.activation = torch.nn.ReLU()
+		elif activation == 'tanh':
+			self.activation = torch.nn.Tanh()
+		elif activation=='leakyrelu':
+			self.activation = torch.nn.LeakyReLU()
+		elif activation=='sigmoid':
+			self.activation = torch.nn.Sigmoid()
+		elif activation=='relu6':
+			self.activation = torch.nn.ReLU6()
+		else:
+			self.activation = None
+		### initialized model weights
+		torch.nn.init.xavier_uniform_(
+			self.conv.weight, gain=torch.nn.init.calculate_gain(w_init_gain))
+
+
+	def forward(self, x):
+		'''
+		forward the process.
+		Parameters
+		----------
+		x input of model
+
+		Returns
+		-------
+		output of model
+		'''
+		if self.activation is not None:
+			return self.activation(self.bn(self.conv(x)))
+		else:
+			return self.bn(self.conv(x))
+
+
+	def fuseforward(self, x):
+		if self.activation is not None:
+			return self.activation(self.conv(x))
+		else:
+			return self.conv(x)
+
+
 #
 #
 #
@@ -450,20 +450,20 @@ class Age_VGG(nn.Module):
 # 	def forward(self,inputs):
 # 		return self.cnn(inputs)
 #
+
+
 #
 #
-# #
-# #
-# #
-# # a = Gender_New()
-# # inputs = torch.zeros((32,3,64,64),dtype=torch.float32)
-# #
-# # out = a(inputs)
-# #
-# # print(out)
-# # print(out.shape)
-# #
 #
+# a = Gender_New()
+# inputs = torch.zeros((32,3,64,64),dtype=torch.float32)
+#
+# out = a(inputs)
+#
+# print(out)
+# print(out.shape)
+#
+
 
 if __name__ == '__main__':
 	model = Age_VGG(vgg_type='vgg19')

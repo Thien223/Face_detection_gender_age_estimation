@@ -15,3 +15,8 @@ venv/
 */outputs/
 */testing_images/
 */val_images/
+*/data/
+*/dataset
+*/*.mp4
+*/*.avi
+*/*.zip
