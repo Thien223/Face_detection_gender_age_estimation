@@ -13,11 +13,7 @@
 
 import tensorflow as tf
 
-<<<<<<< HEAD
 from tensorflow.python.keras import backend as K
-=======
-from keras import backend as K
->>>>>>> be0df902260345b48441f8c6dcc4ccc975d1e238
 
 
 def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
