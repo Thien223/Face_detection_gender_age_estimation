@@ -9,11 +9,7 @@ import os
 import time
 
 import torch
-<<<<<<< HEAD
-from imutils.video import VideoStream
-=======
 
->>>>>>> be0df902260345b48441f8c6dcc4ccc975d1e238
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 import queue
 import numpy as np
@@ -21,24 +17,16 @@ from PIL import ImageDraw, Image
 import tensorflow as tf
 config = tf.compat.v1.ConfigProto(device_count = {'GPU': 2} )
 sess = tf.compat.v1.Session(config=config)
-<<<<<<< HEAD
 #import tensorflow.python.keras.backend as K  ### use for new tensorflow version
 import tensorflow.compat.v1.keras.backend  as K
-=======
-import tensorflow.python.keras.backend as K  ### use for new tensorflow version
->>>>>>> be0df902260345b48441f8c6dcc4ccc975d1e238
 K.set_session(sess)
 from models.common import Conv
 from cv2 import cv2
 
 tf.compat.v1.disable_eager_execution()
 # from keras import backend as K ### use for old tensorflow version
-<<<<<<< HEAD
 #from tensorflow.python.keras.models import load_model
 from tensorflow.keras.models import load_model
-=======
-from keras.models import load_model
->>>>>>> be0df902260345b48441f8c6dcc4ccc975d1e238
 import threading
 from modules.model import eval
 
@@ -194,31 +182,6 @@ class Person(object):
 
 # bufferless VideoCapture
 class VideoCapture:
-<<<<<<< HEAD
-	def __init__(self, video_path):
-		self.streams = []
-		self.cams = []
-		# print(f'video paths: {video_path}')
-		for i,path in enumerate(video_path):
-			# print(i)
-			# print(f'video paths: {video_path}')
-			self.cams.append(VideoStream(path))
-			self.streams.append(self.cams[i].start())
-
-	def read(self):
-		frames = []
-		for stream in self.streams:
-			frames.append(stream.read())
-
-		return frames
-	#
-	# def get_fps(self):
-	# 	return self.cap.get(cv2.CAP_PROP_FPS)
-	#
-	def get_size(self):
-		frame = self.streams[0].read()
-		return frame.shape[0], frame.shape[1]
-=======
 	def __init__(self, name, is_file=False):
 		self.name = name
 		self.cap = cv2.VideoCapture(self.name)
@@ -234,7 +197,7 @@ class VideoCapture:
 		count = 0
 		while True:
 			ret, frame = self.cap.read()
-			# print(ret)
+			print('detecting..')
 			if not ret:
 				if count >= 1000:
 					break
@@ -260,7 +223,6 @@ class VideoCapture:
 
 	def get_size(self):
 		return int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH)), int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
->>>>>>> be0df902260345b48441f8c6dcc4ccc975d1e238
 
 
 class Ensemble(torch.nn.ModuleList):
@@ -299,8 +261,6 @@ def attempt_load(weights, map_location=None):
 			setattr(model, k, getattr(model[-1], k))
 		return model  # return ensemble
 
-<<<<<<< HEAD
-=======
 
 # # *******************************************************************
 # #
@@ -556,4 +516,3 @@ def attempt_load(weights, map_location=None):
 # 		for k in ['names', 'stride']:
 # 			setattr(model, k, getattr(model[-1], k))
 # 		return model  # return ensemble
->>>>>>> be0df902260345b48441f8c6dcc4ccc975d1e238
